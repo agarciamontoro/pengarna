@@ -1,13 +1,9 @@
 module Transaction exposing
     ( Posting
-    , SimpleDate
     , Transaction
-    , monthFromInt
+    , dateToString
     , monthToSpanish
-    , parseSimpleDate
     , postingDecoder
-    , simpleDateDecoder
-    , simpleDateToString
     , transactionDecoder
     , viewTransaction
     )
@@ -18,13 +14,29 @@ import Bulma.Classes as Bulma
 import Bulma.Helpers as BulmaHelpers
 import Html exposing (Html, div, h3, li, nav, span, text, ul)
 import Html.Attributes exposing (class)
+import Iso8601
 import Json.Decode as Decode exposing (Decoder)
 import Time
 
 
+toYearUTC : Time.Posix -> Int
+toYearUTC =
+    Time.toYear Time.utc
+
+
+toMonthUTC : Time.Posix -> Time.Month
+toMonthUTC =
+    Time.toMonth Time.utc
+
+
+toDayUTC : Time.Posix -> Int
+toDayUTC =
+    Time.toDay Time.utc
+
+
 type alias Transaction =
     { postings : List Posting
-    , date : SimpleDate
+    , date : Time.Posix
     , description : String
     }
 
@@ -33,7 +45,7 @@ transactionDecoder : Decoder Transaction
 transactionDecoder =
     Decode.map3 Transaction
         (Decode.field "tpostings" (Decode.list postingDecoder))
-        (Decode.field "tdate" simpleDateDecoder)
+        (Decode.field "tdate" Iso8601.decoder)
         (Decode.field "tdescription" Decode.string)
 
 
@@ -48,75 +60,6 @@ postingDecoder =
     Decode.map2 Posting
         (Decode.field "pamount" (Decode.list Balance.balanceDecoder))
         (Decode.field "paccount" Decode.string)
-
-
-type alias SimpleDate =
-    { year : Int
-    , month : Time.Month
-    , day : Int
-    }
-
-
-simpleDateDecoder : Decoder SimpleDate
-simpleDateDecoder =
-    Decode.andThen
-        (\string ->
-            case parseSimpleDate string of
-                Just date ->
-                    Decode.succeed date
-
-                Nothing ->
-                    Decode.fail <|
-                        String.concat
-                            [ "The string "
-                            , string
-                            , " could not be parsed into a date"
-                            ]
-        )
-        Decode.string
-
-
-monthFromInt : Int -> Maybe Time.Month
-monthFromInt num =
-    case num of
-        1 ->
-            Just Time.Jan
-
-        2 ->
-            Just Time.Feb
-
-        3 ->
-            Just Time.Mar
-
-        4 ->
-            Just Time.Apr
-
-        5 ->
-            Just Time.May
-
-        6 ->
-            Just Time.Jun
-
-        7 ->
-            Just Time.Jul
-
-        8 ->
-            Just Time.Aug
-
-        9 ->
-            Just Time.Sep
-
-        10 ->
-            Just Time.Oct
-
-        11 ->
-            Just Time.Nov
-
-        12 ->
-            Just Time.Dec
-
-        _ ->
-            Nothing
 
 
 monthToSpanish : Time.Month -> String
@@ -159,31 +102,14 @@ monthToSpanish month =
             "diciembre"
 
 
-{-| Parses a simple date like 2019-09-28
--}
-parseSimpleDate : String -> Maybe SimpleDate
-parseSimpleDate string =
-    let
-        elements =
-            Array.fromList <| String.split "-" string
-    in
-    Maybe.map3 SimpleDate
-        (Array.get 0 elements |> Maybe.andThen String.toInt)
-        (Array.get 1 elements
-            |> Maybe.andThen String.toInt
-            |> Maybe.andThen monthFromInt
-        )
-        (Array.get 2 elements |> Maybe.andThen String.toInt)
-
-
-simpleDateToString : SimpleDate -> String
-simpleDateToString { year, month, day } =
+dateToString : Time.Posix -> String
+dateToString time =
     String.concat
-        [ String.fromInt day
+        [ String.fromInt <| toDayUTC time
         , " de "
-        , monthToSpanish month
+        , monthToSpanish <| toMonthUTC time
         , " de "
-        , String.fromInt year
+        , String.fromInt <| toYearUTC time
         ]
 
 
@@ -211,6 +137,6 @@ viewPosting posting =
 viewTransaction : Transaction -> List (Html msg)
 viewTransaction transaction =
     [ h3 [] [ text transaction.description ]
-    , span [] [ text <| simpleDateToString transaction.date ]
+    , span [] [ text <| dateToString transaction.date ]
     , div [] <| List.map (\posting -> div [] (viewPosting posting)) transaction.postings
     ]
