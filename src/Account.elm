@@ -2,7 +2,6 @@ module Account exposing
     ( Account
     , accountDecoder
     , getAccountLineage
-    , getEuroBalance
     , totalAssets
     , totalAssetsWithDefault
     )
@@ -35,31 +34,16 @@ accountDecoder =
 
 getAccountLineage : Account -> List String
 getAccountLineage account =
-    let
-        members =
-            String.split ":" account.name
-    in
-    List.take (List.length members - 1) members
-
-
-getEuroBalance : Account -> Maybe Float
-getEuroBalance account =
-    Maybe.map
-        .quantity
-        (List.head
-            (List.filter
-                (\balance -> balance.commodity == Commodity.Euro)
-                account.accBalances
-            )
-        )
+    String.split ":" account.name
 
 
 totalAssets : List Account -> Maybe Float
 totalAssets accounts =
     Maybe.andThen
-        getEuroBalance
-        (List.head
-            (List.filter (\account -> account.name == "assets") accounts)
+        Balance.getEuroBalance
+        (Maybe.map
+            .accBalances
+            (List.head (List.filter (\account -> account.name == "assets") accounts))
         )
 
 

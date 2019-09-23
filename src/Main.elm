@@ -3,26 +3,33 @@ module Main exposing (main)
 import Account exposing (Account)
 import Browser
 import Browser.Navigation
+import Bulma.Classes as Bulma
+import Bulma.Helpers as BulmaHelpers
 import Commodity exposing (Commodity)
-import Html exposing (Html, button, div, h1, h2, li, text, ul)
+import Html exposing (Html, button, div, h1, h2, li, section, text, ul)
+import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode exposing (Decoder)
+import Transaction exposing (Transaction)
 import Url
 
 
 type Msg
     = GetAccounts
     | AccountsReceived (Result Http.Error (List Account))
+    | TransactionsReceived (Result Http.Error (List Transaction))
 
 
 type alias Model =
-    { accounts : List Account }
+    { accounts : List Account
+    , transactions : List Transaction
+    }
 
 
 init : () -> Url.Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init () url key =
-    ( Model [], getAccounts )
+    ( Model [] [], Cmd.batch [ getAccounts, getTransactions ] )
 
 
 onUrlChange : Url.Url -> Msg
@@ -54,6 +61,14 @@ update msg model =
                 Err _ ->
                     ( model, Cmd.none )
 
+        TransactionsReceived result ->
+            case result of
+                Ok transactionsList ->
+                    ( { model | transactions = transactionsList }, Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
+
 
 viewAccounts : List Account -> Html Msg
 viewAccounts accounts =
@@ -67,12 +82,39 @@ viewAccounts accounts =
 
 view : Model -> Browser.Document Msg
 view model =
+    let
+        total =
+            Account.totalAssetsWithDefault 0 model.accounts
+
+        sign =
+            if total < 0 then
+                "-"
+
+            else
+                "+"
+    in
     { title = "Pengar"
     , body =
-        [ div []
-            [ h1 [] [ text <| String.fromFloat (Account.totalAssetsWithDefault 0 model.accounts) ] ]
-        , div []
-            [ viewAccounts model.accounts ]
+        [ section [ BulmaHelpers.classList [ Bulma.section, Bulma.columns ] ]
+            [ div [ BulmaHelpers.classList [ Bulma.column, Bulma.isNarrow ] ]
+                [ div [ class Bulma.container ]
+                    [ h1 [ class Bulma.isSize1 ]
+                        [ text <|
+                            String.concat
+                                [ sign
+                                , String.fromFloat total
+                                , "€"
+                                ]
+                        ]
+                    ]
+                ]
+            , div [ BulmaHelpers.classList [ Bulma.column ] ]
+                [ ul [] <|
+                    List.map
+                        (\trans -> li [ class Bulma.card ] <| Transaction.viewTransaction trans)
+                        model.transactions
+                ]
+            ]
         ]
     }
 
@@ -82,6 +124,14 @@ getAccounts =
     Http.get
         { url = "http://localhost:5000/accounts"
         , expect = Http.expectJson AccountsReceived (Decode.list Account.accountDecoder)
+        }
+
+
+getTransactions : Cmd Msg
+getTransactions =
+    Http.get
+        { url = "http://localhost:5000/transactions"
+        , expect = Http.expectJson TransactionsReceived (Decode.list Transaction.transactionDecoder)
         }
 
 

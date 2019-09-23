@@ -1,6 +1,7 @@
 module Balance exposing
     ( Balance
     , balanceDecoder
+    , getEuroBalance
     , quantityDecoder
     )
 
@@ -30,3 +31,15 @@ quantityDecoder =
     Decode.map2 quantityFromJSON
         (Decode.field "decimalPlaces" Decode.int)
         (Decode.field "decimalMantissa" Decode.int)
+
+
+getEuroBalance : List Balance -> Maybe Float
+getEuroBalance balances =
+    Maybe.map
+        .quantity
+        (List.head
+            (List.filter
+                (\balance -> balance.commodity == Commodity.Euro)
+                balances
+            )
+        )
