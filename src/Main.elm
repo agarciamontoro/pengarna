@@ -1,8 +1,10 @@
 module Main exposing (main)
 
+import Account exposing (Account)
 import Browser
 import Browser.Navigation
-import Html exposing (Html, button, div, h2, li, text, ul)
+import Commodity exposing (Commodity)
+import Html exposing (Html, button, div, h1, h2, li, text, ul)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode exposing (Decoder)
@@ -20,7 +22,7 @@ type alias Model =
 
 init : () -> Url.Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init () url key =
-    ( Model [], Cmd.none )
+    ( Model [], getAccounts )
 
 
 onUrlChange : Url.Url -> Msg
@@ -68,9 +70,7 @@ view model =
     { title = "Pengar"
     , body =
         [ div []
-            [ h2 [] [ text "Get accounts" ]
-            , button [ onClick GetAccounts ] [ text "Get accounts" ]
-            ]
+            [ h1 [] [ text <| String.fromFloat (Account.totalAssetsWithDefault 0 model.accounts) ] ]
         , div []
             [ viewAccounts model.accounts ]
         ]
@@ -81,80 +81,12 @@ getAccounts : Cmd Msg
 getAccounts =
     Http.get
         { url = "http://localhost:5000/accounts"
-        , expect = Http.expectJson AccountsReceived (Decode.list accountDecoder)
+        , expect = Http.expectJson AccountsReceived (Decode.list Account.accountDecoder)
         }
 
 
-accountDecoder : Decoder Account
-accountDecoder =
-    Decode.map6 Account
-        (Decode.maybe (Decode.field "aparent_" Decode.string))
-        (Decode.field "asubs_" (Decode.list Decode.string))
-        (Decode.field "aname" Decode.string)
-        (Decode.field "aibalance" (Decode.list balanceDecoder))
-        (Decode.field "aebalance" (Decode.list balanceDecoder))
-        (Decode.field "anumpostings" Decode.int)
-
-
-balanceDecoder : Decoder Balance
-balanceDecoder =
-    Decode.map2 Balance
-        (Decode.field "acommodity" Decode.string |> Decode.andThen commodityDecoder)
-        (Decode.field "aquantity" quantityDecoder)
-
-
-commodityDecoder : String -> Decoder Commodity
-commodityDecoder string =
-    Decode.succeed <|
-        case string of
-            "€" ->
-                Euro
-
-            other ->
-                Debug.log other Unknown
-
-
-quantityDecoder : Decoder Float
-quantityDecoder =
-    Decode.map2 quantityFromJSON
-        (Decode.field "decimalPlaces" Decode.int)
-        (Decode.field "decimalMantissa" Decode.int)
-
-
-quantityFromJSON : Int -> Int -> Float
-quantityFromJSON decimalPlaces decimalMantissa =
-    toFloat decimalMantissa / toFloat (10 ^ decimalPlaces)
-
-
-type alias Account =
-    { parent : Maybe String
-    , children : List String
-    , name : String
-    , accBalances : List Balance
-    , ownBalances : List Balance
-    , numPostings : Int
-    }
-
-
-type ParentAccount
-    = ParentAccount (Maybe Account)
-
-
-type ChildrenAccounts
-    = ChildrenAccounts (List Account)
-
-
-type alias Balance =
-    { commodity : Commodity
-    , quantity : Float
-    }
-
-
-type Commodity
-    = Euro
-    | Unknown
-
-
+{-| Main entry
+-}
 main : Program () Model Msg
 main =
     Browser.application
