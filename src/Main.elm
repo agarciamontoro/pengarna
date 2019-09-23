@@ -11,6 +11,8 @@ import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode exposing (Decoder)
+import Task
+import Time
 import Transaction exposing (Transaction)
 import Url
 
@@ -19,17 +21,25 @@ type Msg
     = GetAccounts
     | AccountsReceived (Result Http.Error (List Account))
     | TransactionsReceived (Result Http.Error (List Transaction))
+    | NewTime Time.Posix
 
 
 type alias Model =
     { accounts : List Account
     , transactions : List Transaction
+    , currentMonth : Maybe Time.Month
     }
 
 
 init : () -> Url.Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init () url key =
-    ( Model [] [], Cmd.batch [ getAccounts, getTransactions ] )
+    ( Model [] [] Nothing
+    , Cmd.batch
+        [ getAccounts
+        , getTransactions
+        , Task.perform NewTime Time.now
+        ]
+    )
 
 
 onUrlChange : Url.Url -> Msg
@@ -68,6 +78,11 @@ update msg model =
 
                 Err _ ->
                     ( model, Cmd.none )
+
+        NewTime now ->
+            ( { model | currentMonth = Just <| Time.toMonth Time.utc now }
+            , Cmd.none
+            )
 
 
 viewAccounts : List Account -> Html Msg
@@ -110,13 +125,25 @@ view model =
                 ]
             , div [ BulmaHelpers.classList [ Bulma.column ] ]
                 [ ul [] <|
-                    List.map
-                        (\trans -> li [ class Bulma.card ] <| Transaction.viewTransaction trans)
-                        model.transactions
+                    currentMonthTransactions model
                 ]
             ]
         ]
     }
+
+
+currentMonthTransactions : Model -> List (Html msg)
+currentMonthTransactions model =
+    case model.currentMonth of
+        Nothing ->
+            []
+
+        Just month ->
+            [ ul [] <|
+                List.map
+                    (\trans -> li [] (Transaction.viewTransaction trans))
+                    (Transaction.filterByMonth model.transactions month)
+            ]
 
 
 getAccounts : Cmd Msg

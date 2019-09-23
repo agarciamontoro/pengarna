@@ -1,10 +1,19 @@
 module Transaction exposing
     ( Posting
     , Transaction
+    , currentDay
+    , currentMonth
+    , currentYear
     , dateToString
+    , filterByMonth
+    , isFromMonth
     , monthToSpanish
     , postingDecoder
+    , toDayUTC
+    , toMonthUTC
+    , toYearUTC
     , transactionDecoder
+    , viewPosting
     , viewTransaction
     )
 
@@ -16,6 +25,7 @@ import Html exposing (Html, div, h3, li, nav, span, text, ul)
 import Html.Attributes exposing (class)
 import Iso8601
 import Json.Decode as Decode exposing (Decoder)
+import Task exposing (Task)
 import Time
 
 
@@ -32,6 +42,21 @@ toMonthUTC =
 toDayUTC : Time.Posix -> Int
 toDayUTC =
     Time.toDay Time.utc
+
+
+currentDay : Task x Int
+currentDay =
+    Task.map2 Time.toDay Time.here Time.now
+
+
+currentMonth : Task x Time.Month
+currentMonth =
+    Task.map2 Time.toMonth Time.here Time.now
+
+
+currentYear : Task x Int
+currentYear =
+    Task.map2 Time.toDay Time.here Time.now
 
 
 type alias Transaction =
@@ -140,3 +165,13 @@ viewTransaction transaction =
     , span [] [ text <| dateToString transaction.date ]
     , div [] <| List.map (\posting -> div [] (viewPosting posting)) transaction.postings
     ]
+
+
+isFromMonth : Time.Month -> Transaction -> Bool
+isFromMonth month transaction =
+    toMonthUTC transaction.date == month
+
+
+filterByMonth : List Transaction -> Time.Month -> List Transaction
+filterByMonth accounts month =
+    List.filter (isFromMonth month) accounts
