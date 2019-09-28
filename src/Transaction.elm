@@ -1,26 +1,39 @@
 module Transaction exposing
-    ( Posting
+    ( EuroPosting
+    , Posting
     , Transaction
+    , allEuroPostings
+    , allPostings
+    , concatPostingsFromAccount
     , currentDay
     , currentMonth
     , currentYear
     , dateToString
     , filterByMonth
+    , getAllBalances
     , isFromMonth
+    , isOfAccount
     , monthToSpanish
     , postingDecoder
+    , postingsFromAccount
     , toDayUTC
+    , toEuroPosting
     , toMonthUTC
+    , toTuple
     , toYearUTC
     , transactionDecoder
     , viewPosting
     , viewTransaction
+    , viewTransactionList
     )
 
+import Account exposing (Account)
 import Array
 import Balance exposing (Balance)
 import Bulma.Classes as Bulma
 import Bulma.Helpers as BulmaHelpers
+import Commodity exposing (Commodity)
+import Dict exposing (Dict)
 import Html exposing (Html, div, h3, li, nav, span, text, ul)
 import Html.Attributes exposing (class)
 import Iso8601
@@ -78,6 +91,41 @@ type alias Posting =
     { amounts : List Balance
     , account : String
     }
+
+
+type alias EuroPosting =
+    { amount : Float
+    , account : String
+    }
+
+
+toEuroPosting : Posting -> EuroPosting
+toEuroPosting posting =
+    EuroPosting (Balance.getFirstEuroBalance posting.amounts) posting.account
+
+
+toTuple : EuroPosting -> ( String, Float )
+toTuple posting =
+    ( posting.account, posting.amount )
+
+
+
+-- type alias NewPosting =
+--     { amounts : Dict Commodity Float
+--     , account : String
+--     }
+--
+--
+-- toTuple : Balance -> ( Commodity, Float )
+-- toTuple balance =
+--     ( balance.commodity, balance.quantity )
+--
+--
+-- oldToNew : Posting -> NewPosting
+-- oldToNew posting =
+--     NewPosting
+--         (Dict.fromList (List.map toTuple posting.amounts))
+--         posting.account
 
 
 postingDecoder : Decoder Posting
@@ -140,30 +188,23 @@ dateToString time =
 
 viewPosting : Posting -> List (Html msg)
 viewPosting posting =
-    [ nav
-        [ BulmaHelpers.classList
-            [ Bulma.breadcrumb
-            , Bulma.hasBulletSeparator
-            ]
-        ]
-        [ ul [] <|
-            List.map
-                (\acc -> li [] [ text acc ])
-                (String.split ":" posting.account)
-        ]
-    , span []
+    [ span
+        [ class Bulma.isLeft ]
+        [ text posting.account ]
+    , span [ class Bulma.isRight ]
         [ text <|
             String.fromFloat <|
-                Maybe.withDefault 0 (Balance.getEuroBalance posting.amounts)
+                Balance.getFirstEuroBalance posting.amounts
         ]
     ]
 
 
 viewTransaction : Transaction -> List (Html msg)
 viewTransaction transaction =
-    [ h3 [] [ text transaction.description ]
+    [ h3 [ class Bulma.isSize3 ] [ text transaction.description ]
     , span [] [ text <| dateToString transaction.date ]
-    , div [] <| List.map (\posting -> div [] (viewPosting posting)) transaction.postings
+    , ul [ class Bulma.panel ] <|
+        List.map (\posting -> li [ class Bulma.panelBlock ] (viewPosting posting)) transaction.postings
     ]
 
 
@@ -175,3 +216,62 @@ isFromMonth month transaction =
 filterByMonth : List Transaction -> Time.Month -> List Transaction
 filterByMonth accounts month =
     List.filter (isFromMonth month) accounts
+
+
+isOfAccount : Account -> Posting -> Bool
+isOfAccount account posting =
+    posting.account == account.name
+
+
+postingsFromAccount : Account -> Transaction -> List Posting
+postingsFromAccount account transaction =
+    List.filter (isOfAccount account) transaction.postings
+
+
+concatPostingsFromAccount : Account -> List Transaction -> List Posting
+concatPostingsFromAccount account transactions =
+    List.concatMap (postingsFromAccount account) transactions
+
+
+
+-- rawBalance : List Posting -> Dict Commodity Float
+-- rawBalance postings =
+--     List.partition (\posting.)
+-- List Transaction -> Dict String Float
+--
+
+
+allPostings : List Transaction -> List Posting
+allPostings =
+    List.concatMap .postings
+
+
+allEuroPostings : List Transaction -> List EuroPosting
+allEuroPostings transactions =
+    List.map toEuroPosting (allPostings transactions)
+
+
+getAllBalances : List Transaction -> Dict String Float
+getAllBalances transactions =
+    let
+        sumPosting : EuroPosting -> Dict String Float -> Dict String Float
+        sumPosting posting dict =
+            Dict.update
+                posting.account
+                (\sum -> Just <| posting.amount + Maybe.withDefault 0 sum)
+                dict
+    in
+    List.foldl
+        sumPosting
+        Dict.empty
+        (allEuroPostings transactions)
+
+
+viewTransactionList : List Transaction -> List (Html msg)
+viewTransactionList transactions =
+    [ ul [] <|
+        List.reverse <|
+            List.map
+                (\trans -> li [] (viewTransaction trans))
+                transactions
+    ]

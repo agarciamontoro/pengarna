@@ -1,7 +1,9 @@
 module Balance exposing
     ( Balance
     , balanceDecoder
-    , getEuroBalance
+    , getFirstCommodityBalance
+    , getFirstEuroBalance
+    , isOfCommodity
     , quantityDecoder
     )
 
@@ -33,13 +35,21 @@ quantityDecoder =
         (Decode.field "decimalMantissa" Decode.int)
 
 
-getEuroBalance : List Balance -> Maybe Float
-getEuroBalance balances =
-    Maybe.map
-        .quantity
-        (List.head
-            (List.filter
-                (\balance -> balance.commodity == Commodity.Euro)
-                balances
-            )
-        )
+isOfCommodity : Commodity -> Balance -> Bool
+isOfCommodity commodity balance =
+    balance.commodity == commodity
+
+
+getFirstCommodityBalance : Commodity -> List Balance -> Float
+getFirstCommodityBalance commodity balances =
+    case List.head (List.filter (isOfCommodity commodity) balances) of
+        Nothing ->
+            0
+
+        Just balance ->
+            balance.quantity
+
+
+getFirstEuroBalance : List Balance -> Float
+getFirstEuroBalance =
+    getFirstCommodityBalance Commodity.Euro

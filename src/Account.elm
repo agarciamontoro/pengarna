@@ -3,7 +3,6 @@ module Account exposing
     , accountDecoder
     , getAccountLineage
     , totalAssets
-    , totalAssetsWithDefault
     )
 
 import Balance exposing (Balance)
@@ -37,16 +36,10 @@ getAccountLineage account =
     String.split ":" account.name
 
 
-totalAssets : List Account -> Maybe Float
+totalAssets : List Account -> Float
 totalAssets accounts =
-    Maybe.andThen
-        Balance.getEuroBalance
-        (Maybe.map
+    Balance.getFirstEuroBalance
+        (List.concatMap
             .accBalances
-            (List.head (List.filter (\account -> account.name == "assets") accounts))
+            (List.filter (\account -> account.name == "assets") accounts)
         )
-
-
-totalAssetsWithDefault : Float -> List Account -> Float
-totalAssetsWithDefault default accounts =
-    Maybe.withDefault default (totalAssets accounts)

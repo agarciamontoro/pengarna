@@ -6,7 +6,8 @@ import Browser.Navigation
 import Bulma.Classes as Bulma
 import Bulma.Helpers as BulmaHelpers
 import Commodity exposing (Commodity)
-import Html exposing (Html, button, div, h1, h2, li, section, text, ul)
+import Dict
+import Html exposing (Html, button, div, h1, h2, li, p, section, text, ul)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Http
@@ -99,14 +100,14 @@ view : Model -> Browser.Document Msg
 view model =
     let
         total =
-            Account.totalAssetsWithDefault 0 model.accounts
+            Account.totalAssets model.accounts
 
         sign =
             if total < 0 then
                 "-"
 
             else
-                "+"
+                ""
     in
     { title = "Pengar"
     , body =
@@ -123,27 +124,39 @@ view model =
                         ]
                     ]
                 ]
-            , div [ BulmaHelpers.classList [ Bulma.column ] ]
-                [ ul [] <|
-                    currentMonthTransactions model
-                ]
+            , div [ BulmaHelpers.classList [ Bulma.column ] ] <|
+                List.append
+                    (Transaction.viewTransactionList model.transactions)
+                    (balanceDict model)
             ]
         ]
     }
 
 
-currentMonthTransactions : Model -> List (Html msg)
+balanceDict : Model -> List (Html msg)
+balanceDict model =
+    let
+        list =
+            Dict.toList
+                (Transaction.getAllBalances <| currentMonthTransactions model)
+    in
+    [ ul
+        []
+        (List.map
+            (\elem -> li [] [ p [] [ text <| Tuple.first elem ], p [] [ text <| String.fromFloat (Tuple.second elem) ] ])
+            list
+        )
+    ]
+
+
+currentMonthTransactions : Model -> List Transaction
 currentMonthTransactions model =
     case model.currentMonth of
         Nothing ->
             []
 
         Just month ->
-            [ ul [] <|
-                List.map
-                    (\trans -> li [] (Transaction.viewTransaction trans))
-                    (Transaction.filterByMonth model.transactions month)
-            ]
+            Transaction.filterByMonth model.transactions month
 
 
 getAccounts : Cmd Msg
