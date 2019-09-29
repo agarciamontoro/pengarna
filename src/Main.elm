@@ -86,16 +86,6 @@ update msg model =
             )
 
 
-viewAccounts : List Account -> Html Msg
-viewAccounts accounts =
-    let
-        getNameLi : Account -> Html Msg
-        getNameLi acc =
-            li [] [ text acc.name ]
-    in
-    ul [] (List.map getNameLi accounts)
-
-
 view : Model -> Browser.Document Msg
 view model =
     let
@@ -127,36 +117,10 @@ view model =
             , div [ BulmaHelpers.classList [ Bulma.column ] ] <|
                 List.append
                     (Transaction.viewTransactionList model.transactions)
-                    (balanceDict model)
+                    (Transaction.balancesFromMonth model.currentMonth model.transactions)
             ]
         ]
     }
-
-
-balanceDict : Model -> List (Html msg)
-balanceDict model =
-    let
-        list =
-            Dict.toList
-                (Transaction.getAllBalances <| currentMonthTransactions model)
-    in
-    [ ul
-        []
-        (List.map
-            (\elem -> li [] [ p [] [ text <| Tuple.first elem ], p [] [ text <| String.fromFloat (Tuple.second elem) ] ])
-            list
-        )
-    ]
-
-
-currentMonthTransactions : Model -> List Transaction
-currentMonthTransactions model =
-    case model.currentMonth of
-        Nothing ->
-            []
-
-        Just month ->
-            Transaction.filterByMonth model.transactions month
 
 
 getAccounts : Cmd Msg

@@ -3,10 +3,12 @@ module Account exposing
     , accountDecoder
     , getAccountLineage
     , totalAssets
+    , viewAccounts
     )
 
 import Balance exposing (Balance)
 import Commodity exposing (Commodity)
+import Html exposing (Html, li, text, ul)
 import Json.Decode as Decode exposing (Decoder)
 
 
@@ -43,3 +45,13 @@ totalAssets accounts =
             .accBalances
             (List.filter (\account -> account.name == "assets") accounts)
         )
+
+
+viewAccounts : List Account -> Html msg
+viewAccounts accounts =
+    let
+        getNameLi : Account -> Html msg
+        getNameLi acc =
+            li [] [ text acc.name ]
+    in
+    ul [] (List.map getNameLi accounts)
