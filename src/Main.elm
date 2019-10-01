@@ -7,11 +7,13 @@ import Bulma.Classes as Bulma
 import Bulma.Helpers as BulmaHelpers
 import Commodity exposing (Commodity)
 import Dict
-import Html exposing (Html, button, div, h1, h2, li, p, section, text, ul)
-import Html.Attributes exposing (class)
+import Html exposing (Html, a, button, div, h1, h2, hr, img, li, nav, p, section, span, strong, text, ul)
+import Html.Attributes exposing (class, height, src, width)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode exposing (Decoder)
+import Svg exposing (circle, svg)
+import Svg.Attributes as SvgAttrs
 import Task
 import Time
 import Transaction exposing (Transaction)
@@ -86,6 +88,59 @@ update msg model =
             )
 
 
+viewNavbar : Html Msg
+viewNavbar =
+    nav [ class Bulma.navbar ]
+        [ div [ class Bulma.navbarBrand ]
+            [ a [ class Bulma.navbarItem ]
+                [ svg
+                    [ SvgAttrs.width "2em"
+                    , SvgAttrs.height "2em"
+                    , SvgAttrs.viewBox "0 0 100 100"
+                    ]
+                    [ circle
+                        [ SvgAttrs.cx "50"
+                        , SvgAttrs.cy "50"
+                        , SvgAttrs.r "50"
+                        ]
+                        []
+                    ]
+                ]
+            , a [ BulmaHelpers.classList [ Bulma.navbarBurger ] ]
+                [ span [] []
+                , span [] []
+                , span [] []
+                ]
+            ]
+        , div [ class Bulma.navbarMenu ]
+            [ div [ class Bulma.navbarStart ]
+                [ a [ class Bulma.navbarItem ] [ text "Inicio" ]
+                , a [ class Bulma.navbarItem ] [ text "Transacciones" ]
+
+                -- , div [ BulmaHelpers.classList [ Bulma.navbarItem, Bulma.hasDropdown, Bulma.isHoverable ] ]
+                --     [ a [ class Bulma.navbarLink ] [ text "More" ]
+                --     , div [ class Bulma.navbarDropdown ]
+                --         [ a [ class Bulma.navbarItem ] [ text "About" ]
+                --         , a [ class Bulma.navbarItem ] [ text "Jobs" ]
+                --         , a [ class Bulma.navbarItem ] [ text "Contact" ]
+                --         , hr [ class Bulma.navbarDivider ] []
+                --         , a [ class Bulma.navbarItem ] [ text "Report an issue" ]
+                --         ]
+                --     ]
+                ]
+
+            -- , div [ class Bulma.navbarEnd ]
+            --     [ div [ class Bulma.navbarItem ]
+            --         [ div [ class Bulma.buttons ]
+            --             [ a [ BulmaHelpers.classList [ Bulma.button, Bulma.isPrimary ] ] [ strong [] [ text "Sign up" ] ]
+            --             , a [ BulmaHelpers.classList [ Bulma.button, Bulma.isLight ] ] [ text "Log in" ]
+            --             ]
+            --         ]
+            --     ]
+            ]
+        ]
+
+
 view : Model -> Browser.Document Msg
 view model =
     let
@@ -101,7 +156,8 @@ view model =
     in
     { title = "Pengar"
     , body =
-        [ section [ BulmaHelpers.classList [ Bulma.section, Bulma.columns ] ]
+        [ viewNavbar
+        , section [ BulmaHelpers.classList [ Bulma.section, Bulma.columns ] ]
             [ div [ BulmaHelpers.classList [ Bulma.column, Bulma.isNarrow ] ]
                 [ div [ class Bulma.container ]
                     [ h1 [ class Bulma.isSize1 ]
