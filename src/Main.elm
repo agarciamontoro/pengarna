@@ -2,16 +2,17 @@ module Main exposing (main)
 
 import Account exposing (Account)
 import Browser
-import Browser.Navigation
+import Browser.Navigation as Nav
 import Bulma.Classes as Bulma
 import Bulma.Helpers as BulmaHelpers
 import Commodity exposing (Commodity)
 import Dict
 import Html exposing (Html, a, button, div, h1, h2, hr, img, li, nav, p, section, span, strong, text, ul)
-import Html.Attributes exposing (class, height, src, width)
+import Html.Attributes exposing (class, height, href, src, width)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode exposing (Decoder)
+import Route exposing (Route)
 import Svg exposing (circle, svg)
 import Svg.Attributes as SvgAttrs
 import Task
@@ -21,38 +22,36 @@ import Url
 
 
 type Msg
-    = GetAccounts
+    = LinkClicked Browser.UrlRequest
+    | UrlChanged Url.Url
+    | GetAccounts
     | AccountsReceived (Result Http.Error (List Account))
     | TransactionsReceived (Result Http.Error (List Transaction))
     | NewTime Time.Posix
 
 
+setUrl : Url.Url -> Route -> Route
+setUrl url route =
+    { route | url = url }
+
+
 type alias Model =
-    { accounts : List Account
+    { route : Route
+    , accounts : List Account
     , transactions : List Transaction
     , currentMonth : Maybe Time.Month
     }
 
 
-init : () -> Url.Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
-init () url key =
-    ( Model [] [] Nothing
+init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init flags url key =
+    ( Model (Route url key) [] [] Nothing
     , Cmd.batch
         [ getAccounts
         , getTransactions
         , Task.perform NewTime Time.now
         ]
     )
-
-
-onUrlChange : Url.Url -> Msg
-onUrlChange url =
-    GetAccounts
-
-
-onUrlRequest : Browser.UrlRequest -> Msg
-onUrlRequest request =
-    Debug.todo "onUrlRequest not implemented"
 
 
 subscriptions : Model -> Sub Msg
@@ -63,6 +62,17 @@ subscriptions model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        LinkClicked urlRequest ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model, Nav.pushUrl model.route.key (Url.toString url) )
+
+                Browser.External href ->
+                    ( model, Nav.load href )
+
+        UrlChanged url ->
+            ( { model | route = setUrl url model.route }, Cmd.none )
+
         GetAccounts ->
             ( model, getAccounts )
 
@@ -88,24 +98,27 @@ update msg model =
             )
 
 
+brandCircle : Html Msg
+brandCircle =
+    svg
+        [ SvgAttrs.width "2em"
+        , SvgAttrs.height "2em"
+        , SvgAttrs.viewBox "0 0 100 100"
+        ]
+        [ circle
+            [ SvgAttrs.cx "50"
+            , SvgAttrs.cy "50"
+            , SvgAttrs.r "50"
+            ]
+            []
+        ]
+
+
 viewNavbar : Html Msg
 viewNavbar =
     nav [ class Bulma.navbar ]
         [ div [ class Bulma.navbarBrand ]
-            [ a [ class Bulma.navbarItem ]
-                [ svg
-                    [ SvgAttrs.width "2em"
-                    , SvgAttrs.height "2em"
-                    , SvgAttrs.viewBox "0 0 100 100"
-                    ]
-                    [ circle
-                        [ SvgAttrs.cx "50"
-                        , SvgAttrs.cy "50"
-                        , SvgAttrs.r "50"
-                        ]
-                        []
-                    ]
-                ]
+            [ a [ class Bulma.navbarItem, href "/" ] [ brandCircle ]
             , a [ BulmaHelpers.classList [ Bulma.navbarBurger ] ]
                 [ span [] []
                 , span [] []
@@ -114,8 +127,8 @@ viewNavbar =
             ]
         , div [ class Bulma.navbarMenu ]
             [ div [ class Bulma.navbarStart ]
-                [ a [ class Bulma.navbarItem ] [ text "Inicio" ]
-                , a [ class Bulma.navbarItem ] [ text "Transacciones" ]
+                [ a [ class Bulma.navbarItem, href "/" ] [ text "Inicio" ]
+                , a [ class Bulma.navbarItem, href "/transacciones" ] [ text "Transacciones" ]
 
                 -- , div [ BulmaHelpers.classList [ Bulma.navbarItem, Bulma.hasDropdown, Bulma.isHoverable ] ]
                 --     [ a [ class Bulma.navbarLink ] [ text "More" ]
@@ -201,8 +214,8 @@ main : Program () Model Msg
 main =
     Browser.application
         { init = init
-        , onUrlChange = onUrlChange
-        , onUrlRequest = onUrlRequest
+        , onUrlChange = UrlChanged
+        , onUrlRequest = LinkClicked
         , subscriptions = subscriptions
         , update = update
         , view = view
