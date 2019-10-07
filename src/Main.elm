@@ -136,7 +136,7 @@ update msg model =
                     ( { model | route = page }, Cmd.none )
 
                 Nothing ->
-                    ( model, Cmd.none )
+                    ( { model | route = Route.NotFound }, Cmd.none )
 
         AccountsReceived result ->
             case result of
@@ -269,7 +269,20 @@ viewHome model =
     section [ class Bulma.section ]
         [ div [ class Bulma.container ]
             [ div [] [ h1 [ class Bulma.isSize1 ] [ viewTotal model ] ]
-            , ul [] <| List.map (\elem -> li [] [ text <| Tuple.first elem, text <| String.fromFloat <| Tuple.second elem ]) <| Dict.toList <| Account.summaryAssets model.accounts
+            , ul [] <|
+                List.map
+                    (\elem ->
+                        li []
+                            [ Account.formatAccountName <| String.dropLeft 7 <| Tuple.first elem
+                            , text <|
+                                String.concat
+                                    [ String.fromFloat (Tuple.second elem)
+                                    , "€"
+                                    ]
+                            ]
+                    )
+                <|
+                    Dict.toList (Account.summaryAssets model.accounts)
             ]
         ]
 

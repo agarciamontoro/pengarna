@@ -15,6 +15,7 @@ import Bulma.Helpers as BulmaHelpers
 import Commodity exposing (Commodity)
 import Dict exposing (Dict)
 import Html exposing (Html, a, li, nav, text, ul)
+import Html.Attributes exposing (href)
 import Json.Decode as Decode exposing (Decoder)
 
 
@@ -100,11 +101,36 @@ capitalizeString string =
 
 formatAccountName : String -> Html msg
 formatAccountName name =
-    let
-        accounts =
-            String.split ":" name
-    in
-    nav [ BulmaHelpers.classList [ Bulma.breadcrumb, Bulma.hasBulletSeparator ] ]
-        [ ul [] <|
-            List.map (\acc -> li [] [ a [] [ text <| capitalizeString acc ] ]) accounts
+    nav
+        [ BulmaHelpers.classList [ Bulma.breadcrumb, Bulma.hasBulletSeparator ]
         ]
+        [ ul [] <|
+            List.map
+                (\acc ->
+                    li []
+                        [ a [ href (String.concat [ "/cuentas", acc ]) ]
+                            [ text <| capitalizeString <| Maybe.withDefault "" <| List.head (List.reverse (String.split "/" acc)) ]
+                        ]
+                )
+                (accumulatedNames name)
+        ]
+
+
+accumulatedNames : String -> List String
+accumulatedNames name =
+    let
+        rec prefix newList list =
+            case list of
+                x :: xs ->
+                    rec
+                        (String.concat [ prefix, "/", x ])
+                        (List.append
+                            newList
+                            [ String.concat [ prefix, "/", x ] ]
+                        )
+                        xs
+
+                [] ->
+                    newList
+    in
+    rec "" [] <| String.split ":" name
