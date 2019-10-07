@@ -8,11 +8,11 @@ import Bulma.Helpers as BulmaHelpers
 import Commodity exposing (Commodity)
 import Dict
 import Html exposing (Html, a, button, div, h1, h2, hr, img, li, nav, p, section, span, strong, text, ul)
-import Html.Attributes exposing (class, height, href, src, width)
+import Html.Attributes exposing (class, classList, height, href, src, width)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode exposing (Decoder)
-import Route exposing (Route)
+import Route exposing (Page, Route)
 import Svg exposing (circle, svg)
 import Svg.Attributes as SvgAttrs
 import Task
@@ -21,31 +21,59 @@ import Transaction exposing (Transaction)
 import Url
 
 
+
+-- Main entry
+
+
+main : Program () Model Msg
+main =
+    Browser.application
+        { init = init
+        , onUrlChange = UrlChanged
+        , onUrlRequest = LinkClicked
+        , subscriptions = subscriptions
+        , update = update
+        , view = view
+        }
+
+
+
+-- Data types
+
+
 type Msg
     = LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
-    | GetAccounts
     | AccountsReceived (Result Http.Error (List Account))
     | TransactionsReceived (Result Http.Error (List Transaction))
     | NewTime Time.Posix
 
 
-setUrl : Url.Url -> Route -> Route
-setUrl url route =
-    { route | url = url }
-
-
 type alias Model =
-    { route : Route
+    { route : Page
+    , navKey : Nav.Key
     , accounts : List Account
     , transactions : List Transaction
     , currentMonth : Maybe Time.Month
     }
 
 
+
+-- Initialization
+
+
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url key =
-    ( Model (Route url key) [] [] Nothing
+    let
+        initPage =
+            case Route.fromUrl url of
+                Just page ->
+                    page
+
+                Nothing ->
+                    Route.Home
+    in
+    ( Model initPage key [] [] Nothing
     , Cmd.batch
         [ getAccounts
         , getTransactions
@@ -54,9 +82,41 @@ init flags url key =
     )
 
 
+
+-- Subscriptions management
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.none
+
+
+
+-- Commands
+
+
+getAccounts : Cmd Msg
+getAccounts =
+    Http.get
+        { url = "http://localhost:5000/accounts"
+        , expect =
+            Http.expectJson AccountsReceived <|
+                Decode.list Account.accountDecoder
+        }
+
+
+getTransactions : Cmd Msg
+getTransactions =
+    Http.get
+        { url = "http://localhost:5000/transactions"
+        , expect =
+            Http.expectJson TransactionsReceived <|
+                Decode.list Transaction.transactionDecoder
+        }
+
+
+
+-- Update management
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -65,16 +125,18 @@ update msg model =
         LinkClicked urlRequest ->
             case urlRequest of
                 Browser.Internal url ->
-                    ( model, Nav.pushUrl model.route.key (Url.toString url) )
+                    ( model, Nav.pushUrl model.navKey (Url.toString url) )
 
                 Browser.External href ->
                     ( model, Nav.load href )
 
         UrlChanged url ->
-            ( { model | route = setUrl url model.route }, Cmd.none )
+            case Route.fromUrl url of
+                Just page ->
+                    ( { model | route = page }, Cmd.none )
 
-        GetAccounts ->
-            ( model, getAccounts )
+                Nothing ->
+                    ( model, Cmd.none )
 
         AccountsReceived result ->
             case result of
@@ -98,6 +160,10 @@ update msg model =
             )
 
 
+
+-- Views
+
+
 brandCircle : Html Msg
 brandCircle =
     svg
@@ -114,8 +180,13 @@ brandCircle =
         ]
 
 
-viewNavbar : Html Msg
-viewNavbar =
+isActive : Page -> Model -> Bool
+isActive page model =
+    model.route == page
+
+
+viewNavbar : Model -> Html Msg
+viewNavbar model =
     nav [ class Bulma.navbar ]
         [ div [ class Bulma.navbarBrand ]
             [ a [ class Bulma.navbarItem, href "/" ] [ brandCircle ]
@@ -127,29 +198,31 @@ viewNavbar =
             ]
         , div [ class Bulma.navbarMenu ]
             [ div [ class Bulma.navbarStart ]
-                [ a [ class Bulma.navbarItem, href "/" ] [ text "Inicio" ]
-                , a [ class Bulma.navbarItem, href "/transacciones" ] [ text "Transacciones" ]
-
-                -- , div [ BulmaHelpers.classList [ Bulma.navbarItem, Bulma.hasDropdown, Bulma.isHoverable ] ]
-                --     [ a [ class Bulma.navbarLink ] [ text "More" ]
-                --     , div [ class Bulma.navbarDropdown ]
-                --         [ a [ class Bulma.navbarItem ] [ text "About" ]
-                --         , a [ class Bulma.navbarItem ] [ text "Jobs" ]
-                --         , a [ class Bulma.navbarItem ] [ text "Contact" ]
-                --         , hr [ class Bulma.navbarDivider ] []
-                --         , a [ class Bulma.navbarItem ] [ text "Report an issue" ]
-                --         ]
-                --     ]
+                [ a
+                    [ classList
+                        [ ( Bulma.navbarItem, True )
+                        , ( Bulma.isActive, isActive Route.Home model )
+                        ]
+                    , href "/"
+                    ]
+                    [ text "Inicio" ]
+                , a
+                    [ classList
+                        [ ( Bulma.navbarItem, True )
+                        , ( Bulma.isActive, isActive Route.Transactions model )
+                        ]
+                    , href "/transacciones"
+                    ]
+                    [ text "Transacciones" ]
+                , a
+                    [ classList
+                        [ ( Bulma.navbarItem, True )
+                        , ( Bulma.isActive, isActive Route.Balance model )
+                        ]
+                    , href "/balance"
+                    ]
+                    [ text "Balance" ]
                 ]
-
-            -- , div [ class Bulma.navbarEnd ]
-            --     [ div [ class Bulma.navbarItem ]
-            --         [ div [ class Bulma.buttons ]
-            --             [ a [ BulmaHelpers.classList [ Bulma.button, Bulma.isPrimary ] ] [ strong [] [ text "Sign up" ] ]
-            --             , a [ BulmaHelpers.classList [ Bulma.button, Bulma.isLight ] ] [ text "Log in" ]
-            --             ]
-            --         ]
-            --     ]
             ]
         ]
 
@@ -175,52 +248,63 @@ viewTotal model =
             ]
 
 
+viewPage : Model -> Html Msg
+viewPage model =
+    case model.route of
+        Route.Home ->
+            viewHome model
+
+        Route.Transactions ->
+            viewTransactions model
+
+        Route.Balance ->
+            viewBalances model
+
+        Route.NotFound ->
+            viewNotFound model
+
+
+viewHome : Model -> Html Msg
+viewHome model =
+    section [ class Bulma.section ]
+        [ div [ class Bulma.container ]
+            [ div [] [ h1 [ class Bulma.isSize1 ] [ viewTotal model ] ] ]
+        ]
+
+
+viewTransactions : Model -> Html Msg
+viewTransactions model =
+    section [ class Bulma.section ]
+        [ div [ class Bulma.container ]
+            [ div [ BulmaHelpers.classList [ Bulma.column ] ] <|
+                Transaction.viewTransactionList model.transactions
+            ]
+        ]
+
+
+viewBalances : Model -> Html Msg
+viewBalances model =
+    section [ class Bulma.section ]
+        [ div [ class Bulma.container ]
+            [ div [ BulmaHelpers.classList [ Bulma.column ] ] <|
+                Transaction.balancesFromMonth model.currentMonth model.transactions
+            ]
+        ]
+
+
+viewNotFound : Model -> Html Msg
+viewNotFound model =
+    section [ class Bulma.section ]
+        [ div [ class Bulma.container ]
+            [ h1 [ class Bulma.isSize1 ] [ text "Not found." ] ]
+        ]
+
+
 view : Model -> Browser.Document Msg
 view model =
     { title = "Pengar"
     , body =
-        [ viewNavbar
-        , section [ BulmaHelpers.classList [ Bulma.section, Bulma.columns ] ]
-            [ div [ class Bulma.container ]
-                [ div [ BulmaHelpers.classList [ Bulma.column, Bulma.isNarrow ] ]
-                    [ div [ class Bulma.container ]
-                        [ h1 [ class Bulma.isSize1 ] [ viewTotal model ] ]
-                    ]
-                , div [ BulmaHelpers.classList [ Bulma.column ] ] <|
-                    -- List.append
-                    --     (Transaction.viewTransactionList model.transactions)
-                    Transaction.balancesFromMonth model.currentMonth model.transactions
-                ]
-            ]
+        [ viewNavbar model
+        , viewPage model
         ]
     }
-
-
-getAccounts : Cmd Msg
-getAccounts =
-    Http.get
-        { url = "http://localhost:5000/accounts"
-        , expect = Http.expectJson AccountsReceived (Decode.list Account.accountDecoder)
-        }
-
-
-getTransactions : Cmd Msg
-getTransactions =
-    Http.get
-        { url = "http://localhost:5000/transactions"
-        , expect = Http.expectJson TransactionsReceived (Decode.list Transaction.transactionDecoder)
-        }
-
-
-{-| Main entry
--}
-main : Program () Model Msg
-main =
-    Browser.application
-        { init = init
-        , onUrlChange = UrlChanged
-        , onUrlRequest = LinkClicked
-        , subscriptions = subscriptions
-        , update = update
-        , view = view
-        }
