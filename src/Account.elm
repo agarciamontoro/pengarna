@@ -1,14 +1,17 @@
 module Account exposing
     ( Account
     , accountDecoder
+    , formatAccountName
     , getAccountLineage
     , totalAssets
     , viewAccounts
     )
 
 import Balance exposing (Balance)
+import Bulma.Classes as Bulma
+import Bulma.Helpers as BulmaHelpers
 import Commodity exposing (Commodity)
-import Html exposing (Html, li, text, ul)
+import Html exposing (Html, a, li, nav, text, ul)
 import Json.Decode as Decode exposing (Decoder)
 
 
@@ -55,3 +58,25 @@ viewAccounts accounts =
             li [] [ text acc.name ]
     in
     ul [] (List.map getNameLi accounts)
+
+
+capitalizeString : String -> String
+capitalizeString string =
+    case String.toList string of
+        firstLetter :: rest ->
+            String.fromList <| Char.toUpper firstLetter :: rest
+
+        [] ->
+            string
+
+
+formatAccountName : String -> Html msg
+formatAccountName name =
+    let
+        accounts =
+            String.split ":" name
+    in
+    nav [ BulmaHelpers.classList [ Bulma.breadcrumb, Bulma.hasBulletSeparator ] ]
+        [ ul [] <|
+            List.map (\acc -> li [] [ a [] [ text <| capitalizeString acc ] ]) accounts
+        ]

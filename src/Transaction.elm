@@ -12,7 +12,7 @@ module Transaction exposing
     , viewTransactionList
     )
 
-import Account exposing (Account)
+import Account exposing (Account, formatAccountName)
 import Balance exposing (Balance)
 import Bulma.Classes as Bulma
 import Bulma.Helpers as BulmaHelpers
@@ -113,7 +113,7 @@ balancesFromMonth month transactions =
         (List.map
             (\elem ->
                 li []
-                    [ p [] [ text <| Tuple.first elem ]
+                    [ p [] [ formatAccountName <| Tuple.first elem ]
                     , p [] [ text <| String.fromFloat (Tuple.second elem) ]
                     ]
             )

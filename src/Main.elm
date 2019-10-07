@@ -154,8 +154,8 @@ viewNavbar =
         ]
 
 
-view : Model -> Browser.Document Msg
-view model =
+viewTotal : Model -> Html Msg
+viewTotal model =
     let
         total =
             Account.totalAssets model.accounts
@@ -167,26 +167,30 @@ view model =
             else
                 ""
     in
+    text <|
+        String.concat
+            [ sign
+            , String.fromFloat total
+            , "€"
+            ]
+
+
+view : Model -> Browser.Document Msg
+view model =
     { title = "Pengar"
     , body =
         [ viewNavbar
         , section [ BulmaHelpers.classList [ Bulma.section, Bulma.columns ] ]
-            [ div [ BulmaHelpers.classList [ Bulma.column, Bulma.isNarrow ] ]
-                [ div [ class Bulma.container ]
-                    [ h1 [ class Bulma.isSize1 ]
-                        [ text <|
-                            String.concat
-                                [ sign
-                                , String.fromFloat total
-                                , "€"
-                                ]
-                        ]
+            [ div [ class Bulma.container ]
+                [ div [ BulmaHelpers.classList [ Bulma.column, Bulma.isNarrow ] ]
+                    [ div [ class Bulma.container ]
+                        [ h1 [ class Bulma.isSize1 ] [ viewTotal model ] ]
                     ]
+                , div [ BulmaHelpers.classList [ Bulma.column ] ] <|
+                    -- List.append
+                    --     (Transaction.viewTransactionList model.transactions)
+                    Transaction.balancesFromMonth model.currentMonth model.transactions
                 ]
-            , div [ BulmaHelpers.classList [ Bulma.column ] ] <|
-                List.append
-                    (Transaction.viewTransactionList model.transactions)
-                    (Transaction.balancesFromMonth model.currentMonth model.transactions)
             ]
         ]
     }
