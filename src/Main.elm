@@ -47,6 +47,7 @@ type Msg
     | AccountsReceived (Result Http.Error (List Account))
     | TransactionsReceived (Result Http.Error (List Transaction))
     | NewTime Time.Posix
+    | ToggleMenu
 
 
 type alias Model =
@@ -55,6 +56,7 @@ type alias Model =
     , accounts : Dict String Account
     , transactions : List Transaction
     , currentMonth : Maybe Time.Month
+    , isMenuActive : Bool
     }
 
 
@@ -73,7 +75,7 @@ init flags url key =
                 Nothing ->
                     Route.Home
     in
-    ( Model initPage key Dict.empty [] Nothing
+    ( Model initPage key Dict.empty [] Nothing False
     , Cmd.batch
         [ getAccounts
         , getTransactions
@@ -133,10 +135,10 @@ update msg model =
         UrlChanged url ->
             case Route.fromUrl url of
                 Just page ->
-                    ( { model | route = page }, Cmd.none )
+                    ( { model | route = page, isMenuActive = False }, Cmd.none )
 
                 Nothing ->
-                    ( { model | route = Route.NotFound }, Cmd.none )
+                    ( { model | route = Route.NotFound, isMenuActive = False }, Cmd.none )
 
         AccountsReceived result ->
             case result of
@@ -156,6 +158,11 @@ update msg model =
 
         NewTime now ->
             ( { model | currentMonth = Just <| Time.toMonth Time.utc now }
+            , Cmd.none
+            )
+
+        ToggleMenu ->
+            ( { model | isMenuActive = not model.isMenuActive }
             , Cmd.none
             )
 
@@ -190,13 +197,13 @@ viewNavbar model =
     nav [ class Bulma.navbar ]
         [ div [ class Bulma.navbarBrand ]
             [ a [ class Bulma.navbarItem, href "/" ] [ brandCircle ]
-            , a [ BulmaHelpers.classList [ Bulma.navbarBurger ] ]
+            , div [ classList [ ( Bulma.navbarBurger, True ), ( Bulma.isActive, model.isMenuActive ) ], onClick ToggleMenu ]
                 [ span [] []
                 , span [] []
                 , span [] []
                 ]
             ]
-        , div [ class Bulma.navbarMenu ]
+        , div [ classList [ ( Bulma.navbarMenu, True ), ( Bulma.isActive, model.isMenuActive ) ] ]
             [ div [ class Bulma.navbarStart ]
                 [ a
                     [ classList
