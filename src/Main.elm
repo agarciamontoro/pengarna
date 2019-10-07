@@ -6,7 +6,7 @@ import Browser.Navigation as Nav
 import Bulma.Classes as Bulma
 import Bulma.Helpers as BulmaHelpers
 import Commodity exposing (Commodity)
-import Dict
+import Dict exposing (Dict)
 import Html exposing (Html, a, button, div, h1, h2, hr, img, li, nav, p, section, span, strong, text, ul)
 import Html.Attributes exposing (class, classList, height, href, src, width)
 import Html.Events exposing (onClick)
@@ -52,7 +52,7 @@ type Msg
 type alias Model =
     { route : Page
     , navKey : Nav.Key
-    , accounts : List Account
+    , accounts : Dict String Account
     , transactions : List Transaction
     , currentMonth : Maybe Time.Month
     }
@@ -73,7 +73,7 @@ init flags url key =
                 Nothing ->
                     Route.Home
     in
-    ( Model initPage key [] [] Nothing
+    ( Model initPage key Dict.empty [] Nothing
     , Cmd.batch
         [ getAccounts
         , getTransactions
@@ -141,7 +141,7 @@ update msg model =
         AccountsReceived result ->
             case result of
                 Ok accountsList ->
-                    ( { model | accounts = accountsList }, Cmd.none )
+                    ( { model | accounts = Account.toDict accountsList }, Cmd.none )
 
                 Err _ ->
                     ( model, Cmd.none )
@@ -268,7 +268,9 @@ viewHome : Model -> Html Msg
 viewHome model =
     section [ class Bulma.section ]
         [ div [ class Bulma.container ]
-            [ div [] [ h1 [ class Bulma.isSize1 ] [ viewTotal model ] ] ]
+            [ div [] [ h1 [ class Bulma.isSize1 ] [ viewTotal model ] ]
+            , ul [] <| List.map (\elem -> li [] [ text <| Tuple.first elem, text <| String.fromFloat <| Tuple.second elem ]) <| Dict.toList <| Account.summaryAssets model.accounts
+            ]
         ]
 
 

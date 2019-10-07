@@ -3,6 +3,8 @@ module Account exposing
     , accountDecoder
     , formatAccountName
     , getAccountLineage
+    , summaryAssets
+    , toDict
     , totalAssets
     , viewAccounts
     )
@@ -11,6 +13,7 @@ import Balance exposing (Balance)
 import Bulma.Classes as Bulma
 import Bulma.Helpers as BulmaHelpers
 import Commodity exposing (Commodity)
+import Dict exposing (Dict)
 import Html exposing (Html, a, li, nav, text, ul)
 import Json.Decode as Decode exposing (Decoder)
 
@@ -41,13 +44,38 @@ getAccountLineage account =
     String.split ":" account.name
 
 
-totalAssets : List Account -> Float
+getParent : Account -> Dict String Account -> Maybe Account
+getParent account dict =
+    Maybe.andThen (\name -> Dict.get name dict) account.parent
+
+
+getChildren : Account -> Dict String Account -> List Account
+getChildren account dict =
+    List.filterMap (\name -> Dict.get name dict) account.children
+
+
+totalAssets : Dict String Account -> Float
 totalAssets accounts =
     Balance.getFirstEuroBalance
         (List.concatMap
             .accBalances
-            (List.filter (\account -> account.name == "assets") accounts)
+            (List.filter (\account -> account.name == "assets") <|
+                Dict.values accounts
+            )
         )
+
+
+summaryAssets : Dict String Account -> Dict String Float
+summaryAssets allAccounts =
+    Dict.map
+        (\key value -> Balance.getFirstEuroBalance value.accBalances)
+    <|
+        Dict.filter (\key value -> String.startsWith "assets:" key) allAccounts
+
+
+toDict : List Account -> Dict String Account
+toDict list =
+    Dict.fromList <| List.map (\acc -> ( acc.name, acc )) list
 
 
 viewAccounts : List Account -> Html msg
