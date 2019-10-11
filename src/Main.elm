@@ -267,6 +267,9 @@ viewPage model =
         Route.Balance ->
             viewBalances model
 
+        Route.Account accName ->
+            viewAccountPage accName model
+
         Route.NotFound ->
             viewNotFound model
 
@@ -312,6 +315,11 @@ viewBalances model =
                 Transaction.balancesFromMonth model.currentMonth model.transactions
             ]
         ]
+
+
+viewAccountPage : String -> Model -> Html Msg
+viewAccountPage accName model =
+    section [] [ text accName ]
 
 
 viewNotFound : Model -> Html Msg

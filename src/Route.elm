@@ -2,7 +2,7 @@ module Route exposing (Page(..), Route, fromUrl, routeParser)
 
 import Browser.Navigation as Nav
 import Url exposing (Url)
-import Url.Parser as Parser exposing (Parser, oneOf, s)
+import Url.Parser as Parser exposing ((</>), Parser, oneOf, s)
 
 
 type alias Route =
@@ -14,6 +14,7 @@ type alias Route =
 type Page
     = Home
     | Transactions
+    | Account String
     | Balance
     | NotFound
 
@@ -23,16 +24,22 @@ routeParser =
     oneOf
         [ Parser.map Home Parser.top
         , Parser.map Transactions (s "transacciones")
-        , Parser.map Balance (s "balance")
+        , Parser.map Balance (s "balances")
         ]
 
 
 fromUrl : Url -> Maybe Page
 fromUrl url =
-    -- The RealWorld spec treats the fragment like a path.
-    -- This makes it *literally* the path, so we can proceed
-    -- with parsing as if it had been a normal path all along.
-    Parser.parse routeParser url
+    -- After /cuentas/, an account is encoded as a path, with each one of the
+    -- names separated by a /
+    if String.startsWith "/cuentas/" (Debug.log "path" url.path) then
+        Just <|
+            Account <|
+                String.replace "/" ":" <|
+                    String.dropLeft (String.length "/cuentas/") (Maybe.withDefault "" (Url.percentDecode url.path))
+
+    else
+        Parser.parse routeParser url
 
 
 fromRoute : Route -> Maybe Page
