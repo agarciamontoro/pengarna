@@ -56,6 +56,25 @@ getChildren account dict =
     List.filterMap (\name -> Dict.get name dict) account.children
 
 
+getAllDescendants : Account -> Dict String Account -> List Account
+getAllDescendants account dict =
+    let
+        rec : List Account -> List Account -> List Account
+        rec accounts descendants =
+            case accounts of
+                [] ->
+                    descendants
+
+                child :: rest ->
+                    let
+                        grandchildren =
+                            getChildren child dict
+                    in
+                    rec (List.append rest grandchildren) (List.append descendants grandchildren)
+    in
+    rec [ account ] []
+
+
 totalAssets : Dict String Account -> Float
 totalAssets accounts =
     Balance.getFirstEuroBalance
@@ -114,7 +133,9 @@ viewAccount listAccounts account =
                 Dict.toList
                     (Dict.filter
                         (\name balance -> balance /= 0)
-                        (summaryAssets <| toDict <| getChildren account listAccounts)
+                        (summaryAssets <|
+                            toDict (getAllDescendants account listAccounts)
+                        )
                     )
         ]
     ]
@@ -153,7 +174,7 @@ formatAccountName name =
                             [ text <| capitalizeString <| Maybe.withDefault "" <| List.head (List.reverse (String.split "/" acc)) ]
                         ]
                 )
-                (accumulatedNames name)
+                (accumulatedNames <| Debug.log "Account name:" name)
         ]
 
 

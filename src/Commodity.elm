@@ -19,4 +19,4 @@ commodityDecoder string =
                 Euro
 
             other ->
-                Debug.log other Unknown
+                Unknown

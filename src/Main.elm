@@ -100,7 +100,7 @@ subscriptions model =
 getAccounts : Cmd Msg
 getAccounts =
     Http.get
-        { url = "http://localhost:5000/accounts"
+        { url = "http://192.168.1.77:5000/accounts"
         , expect =
             Http.expectJson AccountsReceived <|
                 Decode.list Account.accountDecoder
@@ -110,7 +110,7 @@ getAccounts =
 getTransactions : Cmd Msg
 getTransactions =
     Http.get
-        { url = "http://localhost:5000/transactions"
+        { url = "http://192.168.1.77:5000/transactions"
         , expect =
             Http.expectJson TransactionsReceived <|
                 Decode.list Transaction.transactionDecoder
@@ -276,29 +276,16 @@ viewPage model =
 
 viewHome : Model -> Html Msg
 viewHome model =
-    section [ class Bulma.section ]
-        [ div [ class Bulma.container ]
-            [ div [] [ h1 [ class Bulma.isSize1 ] [ viewTotal model ] ]
-            , ul [] <|
-                List.map
-                    (\elem ->
-                        li []
-                            [ Account.formatAccountName <| Tuple.first elem
-                            , text <|
-                                String.concat
-                                    [ String.fromFloat (Tuple.second elem)
-                                    , "€"
-                                    ]
-                            ]
-                    )
-                <|
-                    Dict.toList
-                        (Dict.filter
-                            (\name total -> total /= 0)
-                            (Account.summaryAssets model.accounts)
-                        )
-            ]
-        ]
+    section [ class Bulma.section ] <|
+        Maybe.withDefault
+            []
+            (Maybe.map
+                (Account.viewAccount model.accounts)
+                (Dict.get
+                    "assets"
+                    model.accounts
+                )
+            )
 
 
 viewTransactions : Model -> Html Msg
