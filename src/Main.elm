@@ -283,7 +283,7 @@ viewHome model =
                 List.map
                     (\elem ->
                         li []
-                            [ Account.formatAccountName <| String.dropLeft 7 <| Tuple.first elem
+                            [ Account.formatAccountName <| Tuple.first elem
                             , text <|
                                 String.concat
                                     [ String.fromFloat (Tuple.second elem)
@@ -292,7 +292,11 @@ viewHome model =
                             ]
                     )
                 <|
-                    Dict.toList (Account.summaryAssets model.accounts)
+                    Dict.toList
+                        (Dict.filter
+                            (\name total -> total /= 0)
+                            (Account.summaryAssets model.accounts)
+                        )
             ]
         ]
 
