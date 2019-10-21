@@ -323,7 +323,11 @@ viewBalances model =
 
 viewAccountPage : String -> Model -> Html Msg
 viewAccountPage accName model =
-    section [] [ text accName ]
+    section [ class Bulma.section ] <|
+        Maybe.withDefault [] <|
+            Maybe.map
+                (Account.viewAccount model.accounts)
+                (Dict.get accName model.accounts)
 
 
 viewNotFound : Model -> Html Msg

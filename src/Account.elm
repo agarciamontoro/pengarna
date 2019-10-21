@@ -6,6 +6,7 @@ module Account exposing
     , summaryAssets
     , toDict
     , totalAssets
+    , viewAccount
     , viewAccounts
     )
 
@@ -14,8 +15,8 @@ import Bulma.Classes as Bulma
 import Bulma.Helpers as BulmaHelpers
 import Commodity exposing (Commodity)
 import Dict exposing (Dict)
-import Html exposing (Html, a, li, nav, text, ul)
-import Html.Attributes exposing (href)
+import Html exposing (Html, a, div, h1, li, nav, text, ul)
+import Html.Attributes exposing (class, href)
 import Json.Decode as Decode exposing (Decoder)
 
 
@@ -77,6 +78,46 @@ summaryAssets allAccounts =
 toDict : List Account -> Dict String Account
 toDict list =
     Dict.fromList <| List.map (\acc -> ( acc.name, acc )) list
+
+
+viewAccount : Dict String Account -> Account -> List (Html msg)
+viewAccount listAccounts account =
+    let
+        total =
+            Balance.getFirstEuroBalance account.accBalances
+
+        sign =
+            if total < 0 then
+                "-"
+
+            else
+                ""
+
+        totalText =
+            text <| String.concat [ sign, String.fromFloat total, "€" ]
+    in
+    [ div [ class Bulma.container ]
+        [ div [] [ h1 [ class Bulma.isSize1 ] [ totalText ] ]
+        , ul [] <|
+            List.map
+                (\elem ->
+                    li []
+                        [ formatAccountName <| Tuple.first elem
+                        , text <|
+                            String.concat
+                                [ String.fromFloat (Tuple.second elem)
+                                , "€"
+                                ]
+                        ]
+                )
+            <|
+                Dict.toList
+                    (Dict.filter
+                        (\name balance -> balance /= 0)
+                        (summaryAssets <| toDict <| getChildren account listAccounts)
+                    )
+        ]
+    ]
 
 
 viewAccounts : List Account -> Html msg
