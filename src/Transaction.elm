@@ -17,7 +17,7 @@ import Balance exposing (Balance)
 import Bulma.Classes as Bulma
 import Bulma.Helpers as BulmaHelpers
 import Dict exposing (Dict)
-import Html exposing (Html, h3, li, p, span, text, ul)
+import Html exposing (Html, div, h3, li, p, span, text, ul)
 import Html.Attributes exposing (class)
 import Iso8601
 import Json.Decode as Decode exposing (Decoder)
@@ -43,7 +43,27 @@ transactionDecoder =
 
 viewTransaction : Transaction -> List (Html msg)
 viewTransaction transaction =
-    [ h3 [ class Bulma.isSize3 ] [ text transaction.description ]
+    let
+        title =
+            div [ BulmaHelpers.classList [ Bulma.level, Bulma.isMobile ] ]
+                [ div [ class Bulma.levelLeft ]
+                    [ div [ class Bulma.levelItem ]
+                        [ h3 [ class Bulma.isSize3 ]
+                            [ text transaction.description ]
+                        ]
+                    ]
+                , div [ class Bulma.levelRight ]
+                    [ div [ class Bulma.levelItem ]
+                        [ h3 [ class Bulma.isSize3 ]
+                            [ text <|
+                                String.fromFloat <|
+                                    euroBalanceFromAccount "assets:" transaction
+                            ]
+                        ]
+                    ]
+                ]
+    in
+    [ title
     , span [] [ text <| TimeUtils.dateToString transaction.date ]
     , ul [ class Bulma.panel ] <|
         List.map (\posting -> li [ class Bulma.panelBlock ] (Posting.viewPosting posting)) transaction.postings
@@ -130,3 +150,17 @@ viewTransactionList transactions =
                 (\trans -> li [] (viewTransaction trans))
                 transactions
     ]
+
+
+euroBalanceFromAccount : String -> Transaction -> Float
+euroBalanceFromAccount prefix transaction =
+    let
+        foo : Posting -> Maybe Float
+        foo posting =
+            if String.startsWith prefix posting.account then
+                Just (Posting.toEuroPosting posting).amount
+
+            else
+                Nothing
+    in
+    List.foldl (+) 0 <| List.filterMap foo transaction.postings
