@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Account exposing (Account)
+import Api
 import Browser
 import Browser.Navigation as Nav
 import Bulma.Classes as Bulma
@@ -100,7 +101,7 @@ subscriptions model =
 getAccounts : Cmd Msg
 getAccounts =
     Http.get
-        { url = "http://192.168.1.77:5000/accounts"
+        { url = Api.url "accounts"
         , expect =
             Http.expectJson AccountsReceived <|
                 Decode.list Account.accountDecoder
@@ -110,7 +111,7 @@ getAccounts =
 getTransactions : Cmd Msg
 getTransactions =
     Http.get
-        { url = "http://192.168.1.77:5000/transactions"
+        { url = Api.url "transactions"
         , expect =
             Http.expectJson TransactionsReceived <|
                 Decode.list Transaction.transactionDecoder
