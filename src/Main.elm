@@ -327,7 +327,7 @@ viewNotFound model =
 
 view : Model -> Browser.Document Msg
 view model =
-    { title = "Pengar"
+    { title = "Pengarna"
     , body =
         [ viewNavbar model
         , viewPage model
