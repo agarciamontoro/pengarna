@@ -32,7 +32,7 @@ fromUrl : Url -> Maybe Page
 fromUrl url =
     -- After /cuentas/, an account is encoded as a path, with each one of the
     -- names separated by a /
-    if String.startsWith "/cuentas/" (Debug.log "path" url.path) then
+    if String.startsWith "/cuentas/" url.path then
         Just <|
             Account <|
                 String.replace "/" ":" <|

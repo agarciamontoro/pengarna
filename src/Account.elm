@@ -174,7 +174,7 @@ formatAccountName name =
                             [ text <| capitalizeString <| Maybe.withDefault "" <| List.head (List.reverse (String.split "/" acc)) ]
                         ]
                 )
-                (accumulatedNames <| Debug.log "Account name:" name)
+                (accumulatedNames <| name)
         ]
 
 
