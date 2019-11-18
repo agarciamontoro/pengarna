@@ -2,3 +2,7 @@ elm-stuff/
 elm.js
 index.html
 elm.min.js
+.doit.db
+.elm-doc/
+doc/
+custom_index_min.html
