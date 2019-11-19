@@ -1,13 +1,21 @@
 module TimeUtils exposing
-    ( currentDay
-    , currentMonth
-    , currentYear
+    ( toMonthUTC
     , dateToString
-    , monthToSpanish
-    , toDayUTC
-    , toMonthUTC
-    , toYearUTC
     )
+
+{-| Util functions to work with Time.Posix data, UTC- and Spanish-opinionated.
+
+
+# Getters
+
+@docs toMonthUTC
+
+
+# Human readable dates
+
+@docs dateToString
+
+-}
 
 import Task exposing (Task)
 import Time
@@ -18,6 +26,8 @@ toYearUTC =
     Time.toYear Time.utc
 
 
+{-| Retrieve the Time.Month part of a Time.Posix date, assuming it is UTC.
+-}
 toMonthUTC : Time.Posix -> Time.Month
 toMonthUTC =
     Time.toMonth Time.utc
@@ -83,6 +93,8 @@ monthToSpanish month =
             "diciembre"
 
 
+{-| Human readable string from a Time.Posix date, assuming it is UTC.
+-}
 dateToString : Time.Posix -> String
 dateToString time =
     String.concat

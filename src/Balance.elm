@@ -1,22 +1,50 @@
 module Balance exposing
     ( Balance
     , balanceDecoder
-    , getFirstCommodityBalance
     , getFirstEuroBalance
-    , isOfCommodity
-    , quantityDecoder
     )
+
+{-|
+
+@docs Balance
+
+
+# JSON
+
+@docs balanceDecoder
+
+
+# Utils
+
+@docs getFirstEuroBalance
+
+-}
 
 import Commodity exposing (Commodity)
 import Json.Decode as Decode exposing (Decoder)
 
 
+{-| A Balance is nothing more than a quantity of money in a specific
+[`Commodity`](Commodity#Commodity). To model the quantity 54.17€, one would use
+
+    Balance Commodity.Euro 54.17
+
+-}
 type alias Balance =
     { commodity : Commodity
     , quantity : Float
     }
 
 
+{-| JSON decoder that expects, at least:
+
+  - An `acommodity` field that contains a string that should comply with
+    [`commodityDecoder`](Commodity#commodityDecoder).
+  - An `aquantity` object that contains two integer fields: `decimalPlaces` and
+    `decimalMantissa`, which define the quantity as
+    `decimalMantissa / (10 ^ decimalPlaces)`.
+
+-}
 balanceDecoder : Decoder Balance
 balanceDecoder =
     Decode.map2 Balance
@@ -50,6 +78,10 @@ getFirstCommodityBalance commodity balances =
             balance.quantity
 
 
+{-| Given a list of balances, retrieve the quantity of the first one whose
+`commodity` field equals [`Commodity.Euro`](Commodity#Commodity); if not found,
+the Float returned equals 0.
+-}
 getFirstEuroBalance : List Balance -> Float
 getFirstEuroBalance =
     getFirstCommodityBalance Commodity.Euro

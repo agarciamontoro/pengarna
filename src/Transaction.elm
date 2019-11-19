@@ -1,16 +1,24 @@
 module Transaction exposing
     ( Transaction
-    , balancesFromMonth
-    , concatPostingsFromAccount
-    , filterByMonth
-    , fromMonth
-    , getAllBalances
-    , isFromMonth
-    , postingsFromAccount
-    , transactionDecoder
-    , viewTransaction
-    , viewTransactionList
+    , transactionDecoder, viewTransactionList
+    , balancesFromMaybeMonth
     )
+
+{-|
+
+@docs Transaction
+
+
+# JSON and HTML
+
+@docs transactionDecoder, viewTransactionList
+
+
+# Utils
+
+@docs balancesFromMaybeMonth
+
+-}
 
 import Account exposing (Account, formatAccountName)
 import Balance exposing (Balance)
@@ -26,6 +34,18 @@ import Time
 import TimeUtils
 
 
+{-| The Transaction type models an hledger transaction: a group of Postings
+done in a particular point of time with an attached description. The sum of all
+the postings is expected to yield a zero balance.
+
+    Transaction
+      [ Posting [Balance Commodity.Euro 50] assets:cash
+      , Posting [Balance Commodity.Euro -50] assets:bank
+      ]
+      (Time.millisToPosix 1574121600000)
+      "Withdraw 50 euros"
+
+-}
 type alias Transaction =
     { postings : List Posting
     , date : Time.Posix
@@ -33,6 +53,14 @@ type alias Transaction =
     }
 
 
+{-| JSON decoder that expects, at least:
+
+  - A `tpostings` field, containing a list of well-formed Postings (see
+    [`postingDecoder`](Posting#postingDecoder)).
+  - A `tdate` field, containing an [`ISO-8601`-compliant date](https://package.elm-lang.org/packages/rtfeldman/elm-iso8601-date-strings/latest/).
+  - A `tdescription`, containing a string describing the transaction.
+
+-}
 transactionDecoder : Decoder Transaction
 transactionDecoder =
     Decode.map3 Transaction
@@ -85,11 +113,6 @@ postingsFromAccount account transaction =
     List.filter (Posting.isOfAccount account) transaction.postings
 
 
-concatPostingsFromAccount : Account -> List Transaction -> List Posting
-concatPostingsFromAccount account transactions =
-    List.concatMap (postingsFromAccount account) transactions
-
-
 allPostings : List Transaction -> List Posting
 allPostings =
     List.concatMap .postings
@@ -116,17 +139,21 @@ getAllBalances transactions =
         (allEuroPostings transactions)
 
 
-fromMonth : Maybe Time.Month -> List Transaction -> List Transaction
-fromMonth month transactions =
+fromMaybeMonth : Maybe Time.Month -> List Transaction -> List Transaction
+fromMaybeMonth month transactions =
     Maybe.withDefault [] <|
         Maybe.map (filterByMonth transactions) month
 
 
-balancesFromMonth : Maybe Time.Month -> List Transaction -> List (Html msg)
-balancesFromMonth month transactions =
+{-| Given a Maybe Month and a list of transactions, build an HTML list with all
+the balances in that month, defaulting to an empty list if the Maybe is a
+Nothing.
+-}
+balancesFromMaybeMonth : Maybe Time.Month -> List Transaction -> List (Html msg)
+balancesFromMaybeMonth month transactions =
     let
         list =
-            Dict.toList <| getAllBalances <| fromMonth month transactions
+            Dict.toList <| getAllBalances <| fromMaybeMonth month transactions
     in
     [ ul
         []
@@ -142,14 +169,15 @@ balancesFromMonth month transactions =
     ]
 
 
-viewTransactionList : List Transaction -> List (Html msg)
+{-| Renders a list of transactions to an ul element.
+-}
+viewTransactionList : List Transaction -> Html msg
 viewTransactionList transactions =
-    [ ul [] <|
+    ul [] <|
         List.reverse <|
             List.map
                 (\trans -> li [] (viewTransaction trans))
                 transactions
-    ]
 
 
 euroBalanceFromAccount : String -> Transaction -> Float

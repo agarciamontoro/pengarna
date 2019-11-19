@@ -1,5 +1,11 @@
 module Main exposing (main)
 
+{-|
+
+@docs main
+
+-}
+
 import Account exposing (Account)
 import Api
 import Browser
@@ -22,10 +28,8 @@ import Transaction exposing (Transaction)
 import Url
 
 
-
--- Main entry
-
-
+{-| Entry point of the application, modelled as a Browser.application
+-}
 main : Program () Model Msg
 main =
     Browser.application
@@ -294,7 +298,7 @@ viewTransactions model =
     section [ class Bulma.section ]
         [ div [ class Bulma.container ]
             [ div [ BulmaHelpers.classList [ Bulma.column ] ] <|
-                Transaction.viewTransactionList model.transactions
+                [ Transaction.viewTransactionList model.transactions ]
             ]
         ]
 
@@ -304,7 +308,7 @@ viewBalances model =
     section [ class Bulma.section ]
         [ div [ class Bulma.container ]
             [ div [ BulmaHelpers.classList [ Bulma.column ] ] <|
-                Transaction.balancesFromMonth model.currentMonth model.transactions
+                Transaction.balancesFromMaybeMonth model.currentMonth model.transactions
             ]
         ]
 
