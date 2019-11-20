@@ -19,16 +19,13 @@ INDEX_MIN = custom_index_min.html
 # name for the elm-doc --fake-license option
 DOC_DIR = doc
 DOC_INDEX = $(DOC_DIR)/index.html
-DOC_FILES =
+DOC_FILES = src/Route.elm
 DOC_FAKE_LICENSE = 'AGPL-3.0'
-DOC_PORT = 8888
 
 # Elm binary, elm make options and elm-live options
-ELM_PATH = /home/alejandro/.node_modules/bin/elm
+ELM_PATH = ~/.node_modules/bin/elm
 ELM_MAKE_OPTS = --debug --output=$(JS)
-ELM_LIVE_HOST = localhost
-ELM_LIVE_PORT = 8000
-ELM_LIVE_OPTS = --open --pushstate --start-page=$(INDEX) --host $(ELM_LIVE_HOST) --port $(ELM_LIVE_PORT)
+ELM_LIVE_OPTS = --open --pushstate --start-page=$(INDEX)
 
 # Remote machine SSH credentials and remote directory where the web is served
 REMOTE = alejandro@rpi
@@ -81,10 +78,8 @@ deploy : $(JS_MIN) $(INDEX_MIN)
 	scp $(JS_MIN) $(REMOTE):$(REMOTE_DIR)/$(JS_MIN)
 	scp $(INDEX_MIN) $(REMOTE):$(REMOTE_DIR)/index.html
 
-# Generate all the documentation and launch a server to view it in
-# localhost:$(DOC_PORT)
+# Generate all the documentation
 doc : $(DOC_INDEX)
-	python -m http.server --directory $(DOC_DIR) $(DOC_PORT)
 
 # Remove elm.js and elm.min.js files, as well as the whole doc directory
 clean:
