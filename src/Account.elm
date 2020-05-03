@@ -189,16 +189,6 @@ viewAccount listAccounts account =
     ]
 
 
-viewAccounts : List Account -> Html msg
-viewAccounts accounts =
-    let
-        getNameLi : Account -> Html msg
-        getNameLi acc =
-            li [] [ text acc.name ]
-    in
-    ul [] (List.map getNameLi accounts)
-
-
 capitalizeString : String -> String
 capitalizeString string =
     case String.toList string of

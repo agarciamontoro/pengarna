@@ -91,10 +91,11 @@ viewPosting : Posting -> List (Html msg)
 viewPosting posting =
     [ span
         [ class Bulma.isLeft ]
-        [ text posting.account ]
+        [ Account.formatAccountName posting.account ]
     , span [ class Bulma.isRight ]
         [ text <|
             String.fromFloat <|
                 Balance.getFirstEuroBalance posting.amounts
         ]
     ]
+

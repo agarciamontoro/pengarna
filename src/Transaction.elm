@@ -76,8 +76,11 @@ viewTransaction transaction =
             div [ BulmaHelpers.classList [ Bulma.level, Bulma.isMobile ] ]
                 [ div [ class Bulma.levelLeft ]
                     [ div [ class Bulma.levelItem ]
-                        [ h3 [ class Bulma.isSize3 ]
-                            [ text transaction.description ]
+                        [ div []
+                            [ p [ class Bulma.isSize3 ]
+                                [ text transaction.description ]
+                            , p [] [ text <| TimeUtils.dateToString transaction.date ]
+                            ]
                         ]
                     ]
                 , div [ class Bulma.levelRight ]
@@ -92,7 +95,6 @@ viewTransaction transaction =
                 ]
     in
     [ title
-    , span [] [ text <| TimeUtils.dateToString transaction.date ]
     , ul [ class Bulma.panel ] <|
         List.map (\posting -> li [ class Bulma.panelBlock ] (Posting.viewPosting posting)) transaction.postings
     ]
