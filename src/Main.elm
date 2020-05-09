@@ -239,27 +239,6 @@ viewNavbar model =
         ]
 
 
-viewTotal : Model -> Html Msg
-viewTotal model =
-    let
-        total =
-            Account.totalAssets model.accounts
-
-        sign =
-            if total < 0 then
-                "-"
-
-            else
-                ""
-    in
-    text <|
-        String.concat
-            [ sign
-            , String.fromFloat total
-            , "€"
-            ]
-
-
 viewPage : Model -> Html Msg
 viewPage model =
     case model.route of
