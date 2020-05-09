@@ -1,6 +1,7 @@
 module TimeUtils exposing
     ( toMonthUTC
     , dateToString
+    , monthToSpanish
     )
 
 {-| Util functions to work with Time.Posix data, UTC- and Spanish-opinionated.

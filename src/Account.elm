@@ -136,7 +136,7 @@ toDict list =
 information about its parent and its children), as a list of all the children
 accounts with their balances.
 -}
-viewAccount : Dict String Account -> Account -> List (Html msg)
+viewAccount : Dict String Account -> Account -> Html msg
 viewAccount listAccounts account =
     let
         total =
@@ -152,7 +152,7 @@ viewAccount listAccounts account =
         totalText =
             text <| String.concat [ sign, String.fromFloat total, "€" ]
     in
-    [ div [ class Bulma.container ]
+    div [ class Bulma.container ]
         [ div [] [ h1 [ class Bulma.isSize1 ] [ totalText ] ]
         , ul [] <|
             List.map

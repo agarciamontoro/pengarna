@@ -23,6 +23,7 @@ import Svg exposing (circle, svg)
 import Svg.Attributes as SvgAttrs
 import Task
 import Time
+import TimeUtils
 import Transaction exposing (Transaction)
 import Url
 
@@ -259,53 +260,49 @@ viewPage model =
 
 viewHome : Model -> Html Msg
 viewHome model =
-    section [ class Bulma.section ] <|
-        Maybe.withDefault
-            []
-            (Maybe.map
-                (Account.viewAccount model.accounts)
-                (Dict.get
-                    "assets"
-                    model.accounts
-                )
-            )
+    div [ class Bulma.columns ]
+        [ div [ BulmaHelpers.classList [ Bulma.column, Bulma.isOneThird ] ]
+            [ viewAllAccounts model.accounts ]
+        , div [ class Bulma.column ]
+            [ viewMonthlySummary model ]
+        ]
+
+
+viewAllAccounts : Dict String Account -> Html Msg
+viewAllAccounts accounts =
+    Maybe.map
+        (Account.viewAccount accounts)
+        (Dict.get
+            "assets"
+            accounts
+        )
+        |> Maybe.withDefault (div [] [])
+
+
+viewMonthlySummary : Model -> Html Msg
+viewMonthlySummary model =
+    div []
+        [ text (Maybe.map TimeUtils.monthToSpanish model.currentMonth |> Maybe.withDefault "No month")
+        ]
 
 
 viewTransactions : Model -> Html Msg
 viewTransactions model =
-    section [ class Bulma.section ]
-        [ div [ class Bulma.container ]
-            [ div [ BulmaHelpers.classList [ Bulma.column ] ] <|
-                [ Transaction.viewTransactionList model.transactions ]
-            ]
-        ]
+    Transaction.viewTransactionList model.transactions
 
 
 viewBalances : Model -> Html Msg
 viewBalances model =
-    section [ class Bulma.section ]
-        [ div [ class Bulma.container ]
-            [ div [ BulmaHelpers.classList [ Bulma.column ] ] <|
-                Transaction.balancesFromMaybeMonth model.currentMonth model.transactions
-            ]
-        ]
+    Transaction.balancesFromMaybeMonth model.currentMonth model.transactions
 
 
 viewAccountPage : String -> Model -> Html Msg
 viewAccountPage accName model =
-    section [ class Bulma.section ] <|
-        Maybe.withDefault [] <|
-            Maybe.map
-                (Account.viewAccount model.accounts)
-                (Dict.get accName model.accounts)
+    Maybe.withDefault (div [] []) <|
+        Maybe.map
+            (Account.viewAccount model.accounts)
+            (Dict.get accName model.accounts)
 
-
-viewNotFound : Model -> Html Msg
-viewNotFound model =
-    section [ class Bulma.section ]
-        [ div [ class Bulma.container ]
-            [ h1 [ class Bulma.isSize1 ] [ text "Not found." ] ]
-        ]
 
 viewNotFound : Html Msg
 viewNotFound =
@@ -317,6 +314,9 @@ view model =
     { title = "Pengarna"
     , body =
         [ viewNavbar model
-        , viewPage model
+        , section [ class Bulma.section ]
+            [ div [ class Bulma.container ]
+                [ viewPage model ]
+            ]
         ]
     }

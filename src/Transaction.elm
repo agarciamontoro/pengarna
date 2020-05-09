@@ -68,7 +68,7 @@ transactionDecoder =
         (Decode.field "tdescription" Decode.string)
 
 
-viewTransaction : Transaction -> List (Html msg)
+viewTransaction : Transaction -> Html msg
 viewTransaction transaction =
     let
         title =
@@ -93,10 +93,13 @@ viewTransaction transaction =
                     ]
                 ]
     in
-    [ title
-    , ul [ class Bulma.panel ] <|
-        List.map (\posting -> li [ class Bulma.panelBlock ] (Posting.viewPosting posting)) transaction.postings
-    ]
+    li []
+        [ title
+        , ul [ class Bulma.panel ] <|
+            List.map
+                Posting.viewPosting
+                transaction.postings
+        ]
 
 
 isFromMonth : Time.Month -> Transaction -> Bool
@@ -145,13 +148,13 @@ fromMaybeMonth month transactions =
 the balances in that month, defaulting to an empty list if the Maybe is a
 Nothing.
 -}
-balancesFromMaybeMonth : Maybe Time.Month -> List Transaction -> List (Html msg)
+balancesFromMaybeMonth : Maybe Time.Month -> List Transaction -> Html msg
 balancesFromMaybeMonth month transactions =
     let
         list =
             Dict.toList <| getAllBalances <| fromMaybeMonth month transactions
     in
-    [ ul
+    ul
         []
         (List.map
             (\elem ->
@@ -162,7 +165,6 @@ balancesFromMaybeMonth month transactions =
             )
             list
         )
-    ]
 
 
 {-| Renders a list of transactions to an ul element.
@@ -172,7 +174,7 @@ viewTransactionList transactions =
     ul [] <|
         List.reverse <|
             List.map
-                (\trans -> li [] (viewTransaction trans))
+                viewTransaction
                 transactions
 
 

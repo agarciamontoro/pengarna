@@ -87,15 +87,15 @@ postingDecoder =
 
 {-| Render a posting using the first Euro balance found.
 -}
-viewPosting : Posting -> List (Html msg)
+viewPosting : Posting -> Html msg
 viewPosting posting =
-    [ span
-        [ class Bulma.isLeft ]
-        [ Account.formatAccountName posting.account ]
-    , span [ class Bulma.isRight ]
-        [ text <|
-            String.fromFloat <|
-                Balance.getFirstEuroBalance posting.amounts
+    li [ class Bulma.panelBlock ]
+        [ span
+            [ class Bulma.isLeft ]
+            [ Account.formatAccountName posting.account ]
+        , span [ class Bulma.isRight ]
+            [ text <|
+                String.fromFloat <|
+                    Balance.getFirstEuroBalance posting.amounts
+            ]
         ]
-    ]
-
