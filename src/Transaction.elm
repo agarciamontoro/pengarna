@@ -21,11 +21,10 @@ module Transaction exposing
 -}
 
 import Account exposing (Account, formatAccountName)
-import Balance exposing (Balance)
 import Bulma.Classes as Bulma
 import Bulma.Helpers as BulmaHelpers
 import Dict exposing (Dict)
-import Html exposing (Html, div, h3, li, p, span, text, ul)
+import Html exposing (Html, div, h3, li, p, text, ul)
 import Html.Attributes exposing (class)
 import Iso8601
 import Json.Decode as Decode exposing (Decoder)
@@ -108,11 +107,6 @@ isFromMonth month transaction =
 filterByMonth : List Transaction -> Time.Month -> List Transaction
 filterByMonth accounts month =
     List.filter (isFromMonth month) accounts
-
-
-postingsFromAccount : Account -> Transaction -> List Posting
-postingsFromAccount account transaction =
-    List.filter (Posting.isOfAccount account) transaction.postings
 
 
 allPostings : List Transaction -> List Posting

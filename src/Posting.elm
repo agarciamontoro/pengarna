@@ -23,7 +23,7 @@ module Posting exposing
 import Account exposing (Account)
 import Balance exposing (Balance)
 import Bulma.Classes as Bulma
-import Html exposing (Html, span, text)
+import Html exposing (Html, li, span, text)
 import Html.Attributes exposing (class)
 import Json.Decode as Decode exposing (Decoder)
 

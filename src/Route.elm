@@ -20,7 +20,7 @@ defining the correctly formed URLs and the Pages they point to.
 
 import Browser.Navigation as Nav
 import Url exposing (Url)
-import Url.Parser as Parser exposing ((</>), Parser, oneOf, s)
+import Url.Parser as Parser exposing (Parser, oneOf, s)
 
 
 {-| A Route holds the URL and the navigation key.

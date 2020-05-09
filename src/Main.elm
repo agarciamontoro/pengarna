@@ -12,14 +12,13 @@ import Browser
 import Browser.Navigation as Nav
 import Bulma.Classes as Bulma
 import Bulma.Helpers as BulmaHelpers
-import Commodity exposing (Commodity)
 import Dict exposing (Dict)
-import Html exposing (Html, a, button, div, h1, h2, hr, img, li, nav, p, section, span, strong, text, ul)
-import Html.Attributes exposing (class, classList, height, href, src, width)
+import Html exposing (Html, a, div, h1, nav, section, span, text)
+import Html.Attributes exposing (class, classList, height, href, width)
 import Html.Events exposing (onClick)
 import Http
-import Json.Decode as Decode exposing (Decoder)
-import Route exposing (Page, Route)
+import Json.Decode as Decode
+import Route exposing (Page)
 import Svg exposing (circle, svg)
 import Svg.Attributes as SvgAttrs
 import Task
@@ -70,7 +69,7 @@ type alias Model =
 
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
-init flags url key =
+init _ url key =
     let
         initPage =
             case Route.fromUrl url of
@@ -94,7 +93,7 @@ init flags url key =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.none
 
 
@@ -255,7 +254,7 @@ viewPage model =
             viewAccountPage accName model
 
         Route.NotFound ->
-            viewNotFound model
+            viewNotFound
 
 
 viewHome : Model -> Html Msg
@@ -307,6 +306,10 @@ viewNotFound model =
         [ div [ class Bulma.container ]
             [ h1 [ class Bulma.isSize1 ] [ text "Not found." ] ]
         ]
+
+viewNotFound : Html Msg
+viewNotFound =
+    h1 [ class Bulma.isSize1 ] [ text "Not found." ]
 
 
 view : Model -> Browser.Document Msg
