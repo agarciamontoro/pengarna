@@ -2,6 +2,7 @@ module Account exposing
     ( Account
     , accountDecoder, formatAccountName, viewAccount
     , toDict, totalAssets
+    , SimpleAccount, simpleDecoder
     )
 
 {-|
@@ -51,6 +52,12 @@ type alias Account =
     }
 
 
+type alias SimpleAccount =
+    { name : String
+    , balance : Int
+    }
+
+
 {-| JSON decoder that expects, at least:
 
   - An optional `aparent_` field, containing a string with the name of the
@@ -76,6 +83,13 @@ accountDecoder =
         (Decode.field "aname" Decode.string)
         (Decode.field "aibalance" (Decode.list Balance.balanceDecoder))
         (Decode.field "aebalance" (Decode.list Balance.balanceDecoder))
+
+
+simpleDecoder : Decoder SimpleAccount
+simpleDecoder =
+    Decode.map2 SimpleAccount
+        (Decode.field "name" Decode.string)
+        (Decode.field "balance" Decode.int)
 
 
 getChildren : Account -> Dict String Account -> List Account
@@ -193,7 +207,7 @@ item, linking each part to its own account page.
 formatAccountName : String -> Html msg
 formatAccountName name =
     nav
-        [ BulmaHelpers.classList [ Bulma.breadcrumb, Bulma.hasBulletSeparator ]
+        [ BulmaHelpers.classList [ Bulma.breadcrumb, Bulma.hasDotSeparator ]
         ]
         [ ul [] <|
             List.map

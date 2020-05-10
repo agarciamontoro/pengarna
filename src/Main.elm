@@ -6,18 +6,18 @@ module Main exposing (main)
 
 -}
 
-import Account exposing (Account)
+import Account exposing (Account, SimpleAccount)
 import Api
 import Browser
 import Browser.Navigation as Nav
 import Bulma.Classes as Bulma
 import Bulma.Helpers as BulmaHelpers
 import Dict exposing (Dict)
-import Html exposing (Html, a, div, h1, nav, section, span, text)
+import Html exposing (Html, a, div, h1, h2, h3, h4, li, nav, section, span, text, ul)
 import Html.Attributes exposing (class, classList, height, href, width)
 import Html.Events exposing (onClick)
 import Http
-import Json.Decode as Decode
+import Json.Decode as Decode exposing (Decoder)
 import Route exposing (Page)
 import Svg exposing (circle, svg)
 import Svg.Attributes as SvgAttrs
@@ -51,6 +51,8 @@ type Msg
     | UrlChanged Url.Url
     | AccountsReceived (Result Http.Error (List Account))
     | TransactionsReceived (Result Http.Error (List Transaction))
+    | CashflowReceived (Result Http.Error (List SimpleAccount))
+    | ExpenseSummaryReceived (Result Http.Error (List SimpleAccount))
     | NewTime Time.Posix
     | ToggleMenu
 
@@ -62,6 +64,8 @@ type alias Model =
     , transactions : List Transaction
     , currentMonth : Maybe Time.Month
     , isMenuActive : Bool
+    , cashflow : List SimpleAccount
+    , summary : List SimpleAccount
     }
 
 
@@ -80,10 +84,12 @@ init _ url key =
                 Nothing ->
                     Route.Home
     in
-    ( Model initPage key Dict.empty [] Nothing False
+    ( Model initPage key Dict.empty [] Nothing False [] []
     , Cmd.batch
         [ getAccounts
         , getTransactions
+        , getCashflow
+        , getExpenseSummary
         , Task.perform NewTime Time.now
         ]
     )
@@ -122,6 +128,28 @@ getTransactions =
         }
 
 
+getCashflow : Cmd Msg
+getCashflow =
+    Http.get
+        { url = Api.url "cashflow"
+        , expect =
+            Http.expectJson CashflowReceived <|
+                Decode.field "accounts" <|
+                    Decode.list Account.simpleDecoder
+        }
+
+
+getExpenseSummary : Cmd Msg
+getExpenseSummary =
+    Http.get
+        { url = Api.url "expense-summary"
+        , expect =
+            Http.expectJson ExpenseSummaryReceived <|
+                Decode.field "accounts" <|
+                    Decode.list Account.simpleDecoder
+        }
+
+
 
 -- Update management
 
@@ -149,6 +177,22 @@ update msg model =
             case result of
                 Ok accountsList ->
                     ( { model | accounts = Account.toDict accountsList }, Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
+
+        CashflowReceived result ->
+            case result of
+                Ok cashflow ->
+                    ( { model | cashflow = cashflow }, Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
+
+        ExpenseSummaryReceived result ->
+            case result of
+                Ok summary ->
+                    ( { model | summary = summary }, Cmd.none )
 
                 Err _ ->
                     ( model, Cmd.none )
@@ -262,27 +306,92 @@ viewHome : Model -> Html Msg
 viewHome model =
     div [ class Bulma.columns ]
         [ div [ BulmaHelpers.classList [ Bulma.column, Bulma.isOneThird ] ]
-            [ viewAllAccounts model.accounts ]
+            [ viewCashflow model.cashflow ]
         , div [ class Bulma.column ]
-            [ viewMonthlySummary model ]
+            [ viewExpenseSummary model ]
         ]
 
 
-viewAllAccounts : Dict String Account -> Html Msg
-viewAllAccounts accounts =
-    Maybe.map
-        (Account.viewAccount accounts)
-        (Dict.get
-            "assets"
-            accounts
-        )
-        |> Maybe.withDefault (div [] [])
+
+-- viewAllAccounts : Dict String Account -> Html Msg
+-- viewAllAccounts accounts =
+--     Maybe.map
+--         (Account.viewAccount accounts)
+--         (Dict.get
+--             "assets"
+--             accounts
+--         )
+--         |> Maybe.withDefault (div [] [])
 
 
-viewMonthlySummary : Model -> Html Msg
-viewMonthlySummary model =
-    div []
-        [ text (Maybe.map TimeUtils.monthToSpanish model.currentMonth |> Maybe.withDefault "No month")
+viewCashflow : List SimpleAccount -> Html Msg
+viewCashflow accounts =
+    case accounts of
+        total :: rest ->
+            div [ class Bulma.container ]
+                [ div [] [ h1 [ class Bulma.isSize1 ] [ text <| formatBalance total.balance ] ]
+                , ul [] <|
+                    List.map
+                        (\elem ->
+                            li []
+                                [ Account.formatAccountName <| String.replace "assets:" "" elem.name
+                                , text <| formatBalance elem.balance
+                                ]
+                        )
+                        rest
+                ]
+
+        [] ->
+            div [] []
+
+
+formatBalance : Int -> String
+formatBalance balance =
+    let
+        str =
+            String.fromInt balance
+
+        maybeWholePart =
+            String.slice 0 -2 str
+
+        wholePart =
+            if String.isEmpty maybeWholePart then
+                "0"
+
+            else
+                maybeWholePart
+    in
+    String.concat
+        [ wholePart
+        , ","
+        , String.right 2 str
+        , "€"
+        ]
+
+
+viewExpenseSummary : Model -> Html Msg
+viewExpenseSummary model =
+    let
+        f elem =
+            li []
+                [ div [] [ Account.formatAccountName <| String.replace "expenses:" "" elem.name ]
+                , div [] [ text <| formatBalance elem.balance ]
+                ]
+
+        expenses =
+            case model.summary of
+                total :: rest ->
+                    div []
+                        [ ul [] <| List.map f <| List.sortBy (.balance >> (*) -1) rest
+                        , div [] [ span [] [ text "Total: " ], span [] [ text <| formatBalance total.balance ] ]
+                        ]
+
+                [] ->
+                    ul [] []
+    in
+    div [ class Bulma.container ]
+        [ div [] [ h3 [ BulmaHelpers.classList [ Bulma.isSize3, Bulma.isRight ] ] [ text "Últimos 30 días" ] ]
+        , expenses
         ]
 
 
