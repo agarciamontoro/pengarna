@@ -5,4 +5,5 @@ elm.min.js
 .doit.db
 .elm-doc/
 doc/
+dist/
 custom_index_min.html

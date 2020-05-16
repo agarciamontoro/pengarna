@@ -31,6 +31,12 @@ ELM_LIVE_OPTS = --open --pushstate --start-page=$(INDEX)
 REMOTE = alejandro@rpi
 REMOTE_DIR = /home/alejandro/web
 
+# Dist directory
+DIST_DIR = dist/
+DIST_JS = $(DIST_DIR)
+DIST_JS_MIN = $(DIST_DIR)$(JS_MIN)
+DIST_INDEX = $(DIST_DIR)index.html
+
 ##############################################################################
 ######################### Generation of actual files #########################
 ##############################################################################
@@ -54,16 +60,25 @@ $(DOC_INDEX) : $(SRCS)
 $(INDEX_MIN) : $(INDEX)
 	sed 's/$(JS)/$(JS_MIN)/' $(INDEX) > $(INDEX_MIN)
 
+$(DIST_DIR):
+	mkdir $(DIST_DIR)
+
+$(DIST_JS_MIN): $(DIST_DIR) $(JS_MIN)
+	cp $(JS_MIN) $(DIST_JS_MIN)
+
+$(DIST_INDEX): $(DIST_DIR) $(INDEX_MIN)
+	cp $(INDEX_MIN) $(DIST_INDEX)
+
 ##############################################################################
 ############################### PHONY targets ################################
 ##############################################################################
 
-.PHONY: live debug prod deploy doc clean
+.PHONY: live debug prod deploy doc clean dist
 .DEFAULT_GOAL := live
 
 # Use elm-live to compile all the sources, watch their changes and recompile
 # when a change is done, launching a server listening in localhost:8000
-live : $(SRCS)
+live : $(SRCS) $(JS) $(INDEX)
 	elm-live $(MAIN) $(ELM_LIVE_OPTS) -- $(ELM_MAKE_OPTS)
 
 # Compile all the sources into a debug elm.js file
@@ -77,6 +92,9 @@ deploy : $(JS_MIN) $(INDEX_MIN)
 	ssh $(REMOTE) "cp -r $(REMOTE_DIR) $(REMOTE_DIR).backup"
 	scp $(JS_MIN) $(REMOTE):$(REMOTE_DIR)/$(JS_MIN)
 	scp $(INDEX_MIN) $(REMOTE):$(REMOTE_DIR)/index.html
+
+# Build the production ready project into the distribution directory
+dist : $(DIST_JS_MIN) $(DIST_INDEX)
 
 # Generate all the documentation
 doc : $(DOC_INDEX)
