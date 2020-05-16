@@ -110,7 +110,7 @@ subscriptions _ =
 getAccounts : Cmd Msg
 getAccounts =
     Http.get
-        { url = Api.url "accounts"
+        { url = Api.url "/accounts"
         , expect =
             Http.expectJson AccountsReceived <|
                 Decode.list Account.accountDecoder
@@ -120,7 +120,7 @@ getAccounts =
 getTransactions : Cmd Msg
 getTransactions =
     Http.get
-        { url = Api.url "transactions"
+        { url = Api.url "/transactions"
         , expect =
             Http.expectJson TransactionsReceived <|
                 Decode.list Transaction.transactionDecoder
@@ -130,7 +130,7 @@ getTransactions =
 getCashflow : Cmd Msg
 getCashflow =
     Http.get
-        { url = Api.url "cashflow"
+        { url = Api.url "/cashflow"
         , expect =
             Http.expectJson CashflowReceived <|
                 Decode.field "accounts" <|
@@ -141,7 +141,7 @@ getCashflow =
 getExpenseSummary : Cmd Msg
 getExpenseSummary =
     Http.get
-        { url = Api.url "expense-summary"
+        { url = Api.url "/expense-summary"
         , expect =
             Http.expectJson ExpenseSummaryReceived <|
                 Decode.field "accounts" <|

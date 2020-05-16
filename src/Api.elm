@@ -9,7 +9,7 @@ module Api exposing (url)
 
 host : String
 host =
-    ""
+    "http://localhost:8080"
 
 
 {-| Given a path in a String, prepend the API host to it.
