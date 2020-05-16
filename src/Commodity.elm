@@ -38,5 +38,5 @@ commodityDecoder string =
             "€" ->
                 Euro
 
-            other ->
+            _ ->
                 Unknown

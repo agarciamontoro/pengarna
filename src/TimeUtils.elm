@@ -1,6 +1,7 @@
 module TimeUtils exposing
     ( toMonthUTC
     , dateToString
+    , monthToSpanish
     )
 
 {-| Util functions to work with Time.Posix data, UTC- and Spanish-opinionated.
@@ -17,7 +18,6 @@ module TimeUtils exposing
 
 -}
 
-import Task exposing (Task)
 import Time
 
 
@@ -36,21 +36,6 @@ toMonthUTC =
 toDayUTC : Time.Posix -> Int
 toDayUTC =
     Time.toDay Time.utc
-
-
-currentDay : Task x Int
-currentDay =
-    Task.map2 Time.toDay Time.here Time.now
-
-
-currentMonth : Task x Time.Month
-currentMonth =
-    Task.map2 Time.toMonth Time.here Time.now
-
-
-currentYear : Task x Int
-currentYear =
-    Task.map2 Time.toDay Time.here Time.now
 
 
 monthToSpanish : Time.Month -> String

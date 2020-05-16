@@ -6,20 +6,19 @@ module Main exposing (main)
 
 -}
 
-import Account exposing (Account)
+import Account exposing (Account, SimpleAccount)
 import Api
 import Browser
 import Browser.Navigation as Nav
 import Bulma.Classes as Bulma
 import Bulma.Helpers as BulmaHelpers
-import Commodity exposing (Commodity)
 import Dict exposing (Dict)
-import Html exposing (Html, a, button, div, h1, h2, hr, img, li, nav, p, section, span, strong, text, ul)
-import Html.Attributes exposing (class, classList, height, href, src, width)
+import Html exposing (Html, a, div, h1, h3, hr, i, li, nav, section, span, text, ul)
+import Html.Attributes exposing (class, classList, height, href, width)
 import Html.Events exposing (onClick)
 import Http
-import Json.Decode as Decode exposing (Decoder)
-import Route exposing (Page, Route)
+import Json.Decode as Decode
+import Route exposing (Page)
 import Svg exposing (circle, svg)
 import Svg.Attributes as SvgAttrs
 import Task
@@ -51,6 +50,8 @@ type Msg
     | UrlChanged Url.Url
     | AccountsReceived (Result Http.Error (List Account))
     | TransactionsReceived (Result Http.Error (List Transaction))
+    | CashflowReceived (Result Http.Error (List SimpleAccount))
+    | ExpenseSummaryReceived (Result Http.Error (List SimpleAccount))
     | NewTime Time.Posix
     | ToggleMenu
 
@@ -62,6 +63,8 @@ type alias Model =
     , transactions : List Transaction
     , currentMonth : Maybe Time.Month
     , isMenuActive : Bool
+    , cashflow : List SimpleAccount
+    , summary : List SimpleAccount
     }
 
 
@@ -70,7 +73,7 @@ type alias Model =
 
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
-init flags url key =
+init _ url key =
     let
         initPage =
             case Route.fromUrl url of
@@ -80,10 +83,12 @@ init flags url key =
                 Nothing ->
                     Route.Home
     in
-    ( Model initPage key Dict.empty [] Nothing False
+    ( Model initPage key Dict.empty [] Nothing False [] []
     , Cmd.batch
         [ getAccounts
         , getTransactions
+        , getCashflow
+        , getExpenseSummary
         , Task.perform NewTime Time.now
         ]
     )
@@ -94,7 +99,7 @@ init flags url key =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.none
 
 
@@ -105,7 +110,7 @@ subscriptions model =
 getAccounts : Cmd Msg
 getAccounts =
     Http.get
-        { url = Api.url "accounts"
+        { url = Api.url "/accounts"
         , expect =
             Http.expectJson AccountsReceived <|
                 Decode.list Account.accountDecoder
@@ -115,10 +120,32 @@ getAccounts =
 getTransactions : Cmd Msg
 getTransactions =
     Http.get
-        { url = Api.url "transactions"
+        { url = Api.url "/transactions"
         , expect =
             Http.expectJson TransactionsReceived <|
                 Decode.list Transaction.transactionDecoder
+        }
+
+
+getCashflow : Cmd Msg
+getCashflow =
+    Http.get
+        { url = Api.url "/cashflow"
+        , expect =
+            Http.expectJson CashflowReceived <|
+                Decode.field "accounts" <|
+                    Decode.list Account.simpleDecoder
+        }
+
+
+getExpenseSummary : Cmd Msg
+getExpenseSummary =
+    Http.get
+        { url = Api.url "/expense-summary"
+        , expect =
+            Http.expectJson ExpenseSummaryReceived <|
+                Decode.field "accounts" <|
+                    Decode.list Account.simpleDecoder
         }
 
 
@@ -149,6 +176,22 @@ update msg model =
             case result of
                 Ok accountsList ->
                     ( { model | accounts = Account.toDict accountsList }, Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
+
+        CashflowReceived result ->
+            case result of
+                Ok cashflow ->
+                    ( { model | cashflow = cashflow }, Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
+
+        ExpenseSummaryReceived result ->
+            case result of
+                Ok summary ->
+                    ( { model | summary = summary }, Cmd.none )
 
                 Err _ ->
                     ( model, Cmd.none )
@@ -255,58 +298,119 @@ viewPage model =
             viewAccountPage accName model
 
         Route.NotFound ->
-            viewNotFound model
+            viewNotFound
 
 
 viewHome : Model -> Html Msg
 viewHome model =
-    section [ class Bulma.section ] <|
-        Maybe.withDefault
-            []
-            (Maybe.map
-                (Account.viewAccount model.accounts)
-                (Dict.get
-                    "assets"
-                    model.accounts
-                )
-            )
+    div [ class Bulma.columns ]
+        [ div [ BulmaHelpers.classList [ Bulma.column, Bulma.isOneThird ] ]
+            [ viewCashflow model.cashflow ]
+        , div [ class Bulma.column ]
+            [ viewExpenseSummary model ]
+        ]
+
+
+viewCashflow : List SimpleAccount -> Html Msg
+viewCashflow accounts =
+    case accounts of
+        total :: rest ->
+            div [ class Bulma.container ]
+                [ div [] [ h1 [ class Bulma.isSize1 ] [ text <| "Activos" ] ]
+                , ul [ class Bulma.isClearfix ] <|
+                    List.map
+                        (\elem ->
+                            li [ class Bulma.isClearfix ]
+                                [ div [ class Bulma.isPulledLeft ] [ Account.formatAccountName <| String.replace "assets:" "" elem.name ]
+                                , div [ class Bulma.isPulledRight ] [ text <| formatBalance elem.balance ]
+                                ]
+                        )
+                        rest
+                , div [] [ h1 [ BulmaHelpers.classList [ Bulma.isSize1, Bulma.isPulledRight ] ] [ text <| formatBalance total.balance ] ]
+                ]
+
+        [] ->
+            div [] []
+
+
+formatBalance : Int -> String
+formatBalance balance =
+    let
+        str =
+            String.fromInt balance
+
+        maybeWholePart =
+            String.slice 0 -2 str
+
+        wholePart =
+            if String.isEmpty maybeWholePart then
+                "0"
+
+            else
+                maybeWholePart
+    in
+    String.concat
+        [ wholePart
+        , ","
+        , String.right 2 str
+        , "€"
+        ]
+
+
+icon : String -> Html Msg
+icon name =
+    i [ class <| "fas fa-" ++ name ] []
+
+
+viewExpenseSummary : Model -> Html Msg
+viewExpenseSummary model =
+    let
+        name elem =
+            String.replace "expenses:" "" elem.name
+
+        f elem =
+            li [ class Bulma.isClearfix ]
+                [ div [ BulmaHelpers.classList [ Bulma.isPulledLeft, Bulma.isFlex ] ]
+                    [ span [ class Bulma.icon ] [ icon <| Account.iconFromName <| name elem ]
+                    , Account.formatAccountName <| name elem
+                    ]
+                , div [ BulmaHelpers.classList [ Bulma.isPulledRight, Bulma.isFamilyMonospace ] ] [ text <| formatBalance elem.balance ]
+                ]
+    in
+    case model.summary of
+        total :: rest ->
+            div [ class Bulma.container ]
+                [ div [] [ h1 [ class Bulma.isSize1 ] [ text <| "Gastos" ] ]
+                , ul [] <| List.map f <| List.sortBy (.balance >> (*) -1) rest
+                , hr [] []
+                , div [] [ h1 [ BulmaHelpers.classList [ Bulma.isSize1, Bulma.isPulledRight ] ] [ text <| formatBalance total.balance ] ]
+                ]
+
+        [] ->
+            div [] []
 
 
 viewTransactions : Model -> Html Msg
 viewTransactions model =
-    section [ class Bulma.section ]
-        [ div [ class Bulma.container ]
-            [ div [ BulmaHelpers.classList [ Bulma.column ] ] <|
-                [ Transaction.viewTransactionList model.transactions ]
-            ]
-        ]
+    Transaction.viewTransactionList model.transactions
 
 
 viewBalances : Model -> Html Msg
 viewBalances model =
-    section [ class Bulma.section ]
-        [ div [ class Bulma.container ]
-            [ div [ BulmaHelpers.classList [ Bulma.column ] ] <|
-                Transaction.balancesFromMaybeMonth model.currentMonth model.transactions
-            ]
-        ]
+    Transaction.balancesFromMaybeMonth model.currentMonth model.transactions
 
 
 viewAccountPage : String -> Model -> Html Msg
 viewAccountPage accName model =
-    section [ class Bulma.section ] <|
-        Maybe.withDefault [] <|
-            Maybe.map
-                (Account.viewAccount model.accounts)
-                (Dict.get accName model.accounts)
+    Maybe.withDefault (div [] []) <|
+        Maybe.map
+            (Account.viewAccount model.accounts)
+            (Dict.get accName model.accounts)
 
 
-viewNotFound : Model -> Html Msg
-viewNotFound model =
-    section [ class Bulma.section ]
-        [ div [ class Bulma.container ]
-            [ h1 [ class Bulma.isSize1 ] [ text "Not found." ] ]
-        ]
+viewNotFound : Html Msg
+viewNotFound =
+    h1 [ class Bulma.isSize1 ] [ text "Not found." ]
 
 
 view : Model -> Browser.Document Msg
@@ -314,6 +418,9 @@ view model =
     { title = "Pengarna"
     , body =
         [ viewNavbar model
-        , viewPage model
+        , section [ class Bulma.section ]
+            [ div [ class Bulma.container ]
+                [ viewPage model ]
+            ]
         ]
     }

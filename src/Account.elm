@@ -2,6 +2,7 @@ module Account exposing
     ( Account
     , accountDecoder, formatAccountName, viewAccount
     , toDict, totalAssets
+    , SimpleAccount, iconFromName, simpleDecoder
     )
 
 {-|
@@ -23,7 +24,6 @@ module Account exposing
 import Balance exposing (Balance)
 import Bulma.Classes as Bulma
 import Bulma.Helpers as BulmaHelpers
-import Commodity exposing (Commodity)
 import Dict exposing (Dict)
 import Html exposing (Html, a, div, h1, li, nav, text, ul)
 import Html.Attributes exposing (class, href)
@@ -49,6 +49,12 @@ type alias Account =
     , name : String
     , accBalances : List Balance
     , ownBalances : List Balance
+    }
+
+
+type alias SimpleAccount =
+    { name : String
+    , balance : Int
     }
 
 
@@ -79,14 +85,11 @@ accountDecoder =
         (Decode.field "aebalance" (Decode.list Balance.balanceDecoder))
 
 
-getAccountLineage : Account -> List String
-getAccountLineage account =
-    String.split ":" account.name
-
-
-getParent : Account -> Dict String Account -> Maybe Account
-getParent account dict =
-    Maybe.andThen (\name -> Dict.get name dict) account.parent
+simpleDecoder : Decoder SimpleAccount
+simpleDecoder =
+    Decode.map2 SimpleAccount
+        (Decode.field "name" Decode.string)
+        (Decode.field "balance" Decode.int)
 
 
 getChildren : Account -> Dict String Account -> List Account
@@ -130,9 +133,9 @@ totalAssets accounts =
 summaryAssets : Dict String Account -> Dict String Float
 summaryAssets allAccounts =
     Dict.map
-        (\key value -> Balance.getFirstEuroBalance value.accBalances)
+        (\_ value -> Balance.getFirstEuroBalance value.accBalances)
     <|
-        Dict.filter (\key value -> String.startsWith "assets:" key) allAccounts
+        Dict.filter (\key _ -> String.startsWith "assets:" key) allAccounts
 
 
 {-| Convert a list of `Account`s into a `Dict` of `Account`s hashed by their
@@ -147,7 +150,7 @@ toDict list =
 information about its parent and its children), as a list of all the children
 accounts with their balances.
 -}
-viewAccount : Dict String Account -> Account -> List (Html msg)
+viewAccount : Dict String Account -> Account -> Html msg
 viewAccount listAccounts account =
     let
         total =
@@ -163,7 +166,7 @@ viewAccount listAccounts account =
         totalText =
             text <| String.concat [ sign, String.fromFloat total, "€" ]
     in
-    [ div [ class Bulma.container ]
+    div [ class Bulma.container ]
         [ div [] [ h1 [ class Bulma.isSize1 ] [ totalText ] ]
         , ul [] <|
             List.map
@@ -180,13 +183,12 @@ viewAccount listAccounts account =
             <|
                 Dict.toList
                     (Dict.filter
-                        (\name balance -> balance /= 0)
+                        (\_ balance -> balance /= 0)
                         (summaryAssets <|
                             toDict (getAllDescendants account listAccounts)
                         )
                     )
         ]
-    ]
 
 
 capitalizeString : String -> String
@@ -205,7 +207,7 @@ item, linking each part to its own account page.
 formatAccountName : String -> Html msg
 formatAccountName name =
     nav
-        [ BulmaHelpers.classList [ Bulma.breadcrumb, Bulma.hasBulletSeparator ]
+        [ BulmaHelpers.classList [ Bulma.breadcrumb, Bulma.hasDotSeparator ]
         ]
         [ ul [] <|
             List.map
@@ -237,3 +239,34 @@ accumulatedNames name =
                     newList
     in
     rec "" [] <| String.split ":" name
+
+
+{-| Maps every top level account under expenses: to a FontAwesome icon name
+-}
+nameToIcon : Dict String String
+nameToIcon =
+    Dict.fromList
+        [ ( "casa", "home" )
+        , ( "comida", "utensils" )
+        , ( "autónomos", "landmark" )
+        , ( "ropa", "socks" )
+        , ( "salud", "medkit" )
+        , ( "baño", "bath" )
+        , ( "cocina", "burn" )
+        , ( "regalos", "gift" )
+        , ( "detergente", "pump-soap" )
+        , ( "suscripciones", "newspaper" )
+        , ( "velas", "menorah" )
+        , ( "donaciones", "hand-holding-usd" )
+        , ( "bolsas", "shopping-bag" )
+        ]
+
+
+iconFromName : String -> String
+iconFromName account =
+    case Dict.get (String.toLower account) nameToIcon of
+        Just iconName ->
+            iconName
+
+        Nothing ->
+            "money-bill"

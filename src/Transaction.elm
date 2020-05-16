@@ -21,11 +21,10 @@ module Transaction exposing
 -}
 
 import Account exposing (Account, formatAccountName)
-import Balance exposing (Balance)
 import Bulma.Classes as Bulma
 import Bulma.Helpers as BulmaHelpers
 import Dict exposing (Dict)
-import Html exposing (Html, div, h3, li, p, span, text, ul)
+import Html exposing (Html, div, h3, li, p, text, ul)
 import Html.Attributes exposing (class)
 import Iso8601
 import Json.Decode as Decode exposing (Decoder)
@@ -69,7 +68,7 @@ transactionDecoder =
         (Decode.field "tdescription" Decode.string)
 
 
-viewTransaction : Transaction -> List (Html msg)
+viewTransaction : Transaction -> Html msg
 viewTransaction transaction =
     let
         title =
@@ -94,10 +93,13 @@ viewTransaction transaction =
                     ]
                 ]
     in
-    [ title
-    , ul [ class Bulma.panel ] <|
-        List.map (\posting -> li [ class Bulma.panelBlock ] (Posting.viewPosting posting)) transaction.postings
-    ]
+    li []
+        [ title
+        , ul [ class Bulma.panel ] <|
+            List.map
+                Posting.viewPosting
+                transaction.postings
+        ]
 
 
 isFromMonth : Time.Month -> Transaction -> Bool
@@ -108,11 +110,6 @@ isFromMonth month transaction =
 filterByMonth : List Transaction -> Time.Month -> List Transaction
 filterByMonth accounts month =
     List.filter (isFromMonth month) accounts
-
-
-postingsFromAccount : Account -> Transaction -> List Posting
-postingsFromAccount account transaction =
-    List.filter (Posting.isOfAccount account) transaction.postings
 
 
 allPostings : List Transaction -> List Posting
@@ -151,13 +148,13 @@ fromMaybeMonth month transactions =
 the balances in that month, defaulting to an empty list if the Maybe is a
 Nothing.
 -}
-balancesFromMaybeMonth : Maybe Time.Month -> List Transaction -> List (Html msg)
+balancesFromMaybeMonth : Maybe Time.Month -> List Transaction -> Html msg
 balancesFromMaybeMonth month transactions =
     let
         list =
             Dict.toList <| getAllBalances <| fromMaybeMonth month transactions
     in
-    [ ul
+    ul
         []
         (List.map
             (\elem ->
@@ -168,7 +165,6 @@ balancesFromMaybeMonth month transactions =
             )
             list
         )
-    ]
 
 
 {-| Renders a list of transactions to an ul element.
@@ -177,9 +173,7 @@ viewTransactionList : List Transaction -> Html msg
 viewTransactionList transactions =
     ul [] <|
         List.reverse <|
-            List.map
-                (\trans -> li [] (viewTransaction trans))
-                transactions
+            List.map viewTransaction transactions
 
 
 euroBalanceFromAccount : String -> Transaction -> Float
