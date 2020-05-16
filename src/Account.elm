@@ -2,7 +2,7 @@ module Account exposing
     ( Account
     , accountDecoder, formatAccountName, viewAccount
     , toDict, totalAssets
-    , SimpleAccount, simpleDecoder
+    , SimpleAccount, iconFromName, simpleDecoder
     )
 
 {-|
@@ -239,3 +239,34 @@ accumulatedNames name =
                     newList
     in
     rec "" [] <| String.split ":" name
+
+
+{-| Maps every top level account under expenses: to a FontAwesome icon name
+-}
+nameToIcon : Dict String String
+nameToIcon =
+    Dict.fromList
+        [ ( "casa", "home" )
+        , ( "comida", "utensils" )
+        , ( "autónomos", "landmark" )
+        , ( "ropa", "socks" )
+        , ( "salud", "medkit" )
+        , ( "baño", "bath" )
+        , ( "cocina", "burn" )
+        , ( "regalos", "gift" )
+        , ( "detergente", "pump-soap" )
+        , ( "suscripciones", "newspaper" )
+        , ( "velas", "menorah" )
+        , ( "donaciones", "hand-holding-usd" )
+        , ( "bolsas", "shopping-bag" )
+        ]
+
+
+iconFromName : String -> String
+iconFromName account =
+    case Dict.get (String.toLower account) nameToIcon of
+        Just iconName ->
+            iconName
+
+        Nothing ->
+            "money-bill"

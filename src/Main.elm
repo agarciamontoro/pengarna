@@ -13,17 +13,16 @@ import Browser.Navigation as Nav
 import Bulma.Classes as Bulma
 import Bulma.Helpers as BulmaHelpers
 import Dict exposing (Dict)
-import Html exposing (Html, a, div, h1, h2, h3, h4, li, nav, section, span, text, ul)
+import Html exposing (Html, a, div, h1, h3, hr, i, li, nav, section, span, text, ul)
 import Html.Attributes exposing (class, classList, height, href, width)
 import Html.Events exposing (onClick)
 import Http
-import Json.Decode as Decode exposing (Decoder)
+import Json.Decode as Decode
 import Route exposing (Page)
 import Svg exposing (circle, svg)
 import Svg.Attributes as SvgAttrs
 import Task
 import Time
-import TimeUtils
 import Transaction exposing (Transaction)
 import Url
 
@@ -312,33 +311,22 @@ viewHome model =
         ]
 
 
-
--- viewAllAccounts : Dict String Account -> Html Msg
--- viewAllAccounts accounts =
---     Maybe.map
---         (Account.viewAccount accounts)
---         (Dict.get
---             "assets"
---             accounts
---         )
---         |> Maybe.withDefault (div [] [])
-
-
 viewCashflow : List SimpleAccount -> Html Msg
 viewCashflow accounts =
     case accounts of
         total :: rest ->
             div [ class Bulma.container ]
-                [ div [] [ h1 [ class Bulma.isSize1 ] [ text <| formatBalance total.balance ] ]
-                , ul [] <|
+                [ div [] [ h1 [ class Bulma.isSize1 ] [ text <| "Activos" ] ]
+                , ul [ class Bulma.isClearfix ] <|
                     List.map
                         (\elem ->
-                            li []
-                                [ Account.formatAccountName <| String.replace "assets:" "" elem.name
-                                , text <| formatBalance elem.balance
+                            li [ class Bulma.isClearfix ]
+                                [ div [ class Bulma.isPulledLeft ] [ Account.formatAccountName <| String.replace "assets:" "" elem.name ]
+                                , div [ class Bulma.isPulledRight ] [ text <| formatBalance elem.balance ]
                                 ]
                         )
                         rest
+                , div [] [ h1 [ BulmaHelpers.classList [ Bulma.isSize1, Bulma.isPulledRight ] ] [ text <| formatBalance total.balance ] ]
                 ]
 
         [] ->
@@ -369,30 +357,37 @@ formatBalance balance =
         ]
 
 
+icon : String -> Html Msg
+icon name =
+    i [ class <| "fas fa-" ++ name ] []
+
+
 viewExpenseSummary : Model -> Html Msg
 viewExpenseSummary model =
     let
+        name elem =
+            String.replace "expenses:" "" elem.name
+
         f elem =
-            li []
-                [ div [] [ Account.formatAccountName <| String.replace "expenses:" "" elem.name ]
-                , div [] [ text <| formatBalance elem.balance ]
+            li [ class Bulma.isClearfix ]
+                [ div [ BulmaHelpers.classList [ Bulma.isPulledLeft, Bulma.isFlex ] ]
+                    [ span [ class Bulma.icon ] [ icon <| Account.iconFromName <| name elem ]
+                    , Account.formatAccountName <| name elem
+                    ]
+                , div [ BulmaHelpers.classList [ Bulma.isPulledRight, Bulma.isFamilyMonospace ] ] [ text <| formatBalance elem.balance ]
+                ]
+    in
+    case model.summary of
+        total :: rest ->
+            div [ class Bulma.container ]
+                [ div [] [ h1 [ class Bulma.isSize1 ] [ text <| "Gastos" ] ]
+                , ul [] <| List.map f <| List.sortBy (.balance >> (*) -1) rest
+                , hr [] []
+                , div [] [ h1 [ BulmaHelpers.classList [ Bulma.isSize1, Bulma.isPulledRight ] ] [ text <| formatBalance total.balance ] ]
                 ]
 
-        expenses =
-            case model.summary of
-                total :: rest ->
-                    div []
-                        [ ul [] <| List.map f <| List.sortBy (.balance >> (*) -1) rest
-                        , div [] [ span [] [ text "Total: " ], span [] [ text <| formatBalance total.balance ] ]
-                        ]
-
-                [] ->
-                    ul [] []
-    in
-    div [ class Bulma.container ]
-        [ div [] [ h3 [ BulmaHelpers.classList [ Bulma.isSize3, Bulma.isRight ] ] [ text "Últimos 30 días" ] ]
-        , expenses
-        ]
+        [] ->
+            div [] []
 
 
 viewTransactions : Model -> Html Msg

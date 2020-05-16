@@ -173,9 +173,7 @@ viewTransactionList : List Transaction -> Html msg
 viewTransactionList transactions =
     ul [] <|
         List.reverse <|
-            List.map
-                viewTransaction
-                transactions
+            List.map viewTransaction transactions
 
 
 euroBalanceFromAccount : String -> Transaction -> Float
