@@ -3,7 +3,7 @@
 set -e
 
 js="elm.js"
-min="elm.min.js"
+min="dist/prod/assets/js/elm.js"
 
 elm make --optimize --output=$js $@
 
