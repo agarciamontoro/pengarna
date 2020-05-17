@@ -1,19 +1,80 @@
-module PieChart exposing (Msg, pie)
+module PieChart exposing (Model, Msg, getModel, pie, update)
 
 import Account exposing (SimpleAccount)
 import Array exposing (Array)
+import Dict exposing (Dict)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
-import Svg.Events exposing (onMouseOver)
+import Svg.Events exposing (onMouseOut, onMouseOver)
+
+
+type alias Model =
+    { accounts : Dict String Section
+    }
+
+
+type alias Section =
+    { account : SimpleAccount
+    , color : String
+    , hovered : Bool
+    , selected : Bool
+    }
+
+
+{-| Maps every top level account under expenses: to a color
+-}
+nameToColor : Dict String String
+nameToColor =
+    Dict.fromList
+        [ ( "casa", "crimson" )
+        , ( "comida", "green" )
+        , ( "autónomos", "brown" )
+        , ( "ropa", "orange" )
+        , ( "salud", "pink" )
+        , ( "baño", "blue" )
+        , ( "cocina", "coral" )
+        , ( "regalos", "yellow" )
+        , ( "detergente", "purple" )
+        , ( "suscripciones", "grey" )
+        , ( "velas", "beige" )
+        , ( "donaciones", "azure" )
+        , ( "bolsas", "aquamarine" )
+        ]
+
+
+colorFromName : String -> String
+colorFromName account =
+    Dict.get (String.toLower account) nameToColor
+        |> Maybe.withDefault "black"
+
+
+getModel : List SimpleAccount -> Model
+getModel accounts =
+    let
+        toDict : SimpleAccount -> Maybe ( String, Section )
+        toDict account =
+            case account.name of
+                "expenses" ->
+                    Nothing
+
+                _ ->
+                    let
+                        cleanName =
+                            String.dropLeft (String.length "expenses:") account.name
+                    in
+                    Just ( account.name, Section account (colorFromName cleanName) False False )
+    in
+    List.filterMap toDict accounts |> Dict.fromList |> Model
 
 
 type Msg
-    = PieHover
+    = OnMouseOver String
+    | OnMouseOut String
 
 
-sum : List SimpleAccount -> Int
-sum accounts =
-    List.map .balance accounts |> List.sum
+sum : List Section -> Int
+sum sections =
+    List.map (.account >> .balance) sections |> List.sum
 
 
 tau : Float
@@ -81,49 +142,45 @@ dashOffset _ stroke =
     String.fromFloat (tau - stroke.offset)
 
 
-mapToStroke : Circle -> List SimpleAccount -> List Stroke
-mapToStroke circle accounts =
+mapToStroke : Circle -> Model -> List ( Section, Stroke )
+mapToStroke circle model =
     let
-        totalAmount =
-            sum accounts
+        sectionList =
+            Dict.values model.accounts |> List.sortBy (.account >> .balance)
 
-        f account ( list, offset ) =
+        totalAmount =
+            sum sectionList
+
+        f section ( list, offset ) =
             let
                 currLength =
-                    length circle (toFloat totalAmount) (toFloat account.balance)
+                    length circle (toFloat totalAmount) (toFloat section.account.balance)
             in
-            ( Stroke currLength offset :: list, offset + currLength )
+            ( ( section, Stroke currLength offset ) :: list, offset + currLength )
     in
-    List.sortBy .balance accounts
-        |> List.foldr f ( [], tau - tau / 4 )
+    List.foldr f ( [], tau - tau / 4 ) sectionList
         |> Tuple.first
 
 
-colors : Array String
-colors =
-    Array.fromList [ "red", "blue", "green", "pink" ]
-
-
-genericPie : Circle -> List SimpleAccount -> Svg Msg
-genericPie circData accounts =
+genericPie : Circle -> Model -> Svg Msg
+genericPie circData model =
     let
-        f : Int -> Stroke -> Svg Msg
-        f idx elem =
+        f : ( Section, Stroke ) -> Svg Msg
+        f ( section, sectionStroke ) =
             circle
                 [ cx <| String.fromFloat circData.x
                 , cy <| String.fromFloat circData.y
                 , r <| String.fromFloat circData.r
-                , fill "transparent"
-                , stroke <| Maybe.withDefault "red" <| Array.get (modBy 4 idx) colors
+                , fill "none"
+                , stroke <| section.color
                 , strokeWidth <| String.fromFloat circData.width
-                , strokeDasharray <| dashArray circData elem
-                , strokeDashoffset <| dashOffset circData elem
-                , onMouseOver PieHover
+                , strokeDasharray <| dashArray circData sectionStroke
+                , strokeDashoffset <| dashOffset circData sectionStroke
+                , pointerEvents "visibleStroke"
+                , onMouseOver <| OnMouseOver section.account.name
+                , onMouseOut <| OnMouseOut section.account.name
                 ]
                 []
-
-        arcs =
-            List.indexedMap f <| mapToStroke circData accounts
     in
     svg
         [ width "100%"
@@ -131,16 +188,25 @@ genericPie circData accounts =
         , viewBox <| viewBoxStr circData
         ]
     <|
-        circle
-            [ cx <| String.fromFloat circData.x
-            , cy <| String.fromFloat circData.y
-            , r <| String.fromFloat circData.r
-            , fill "#fff"
-            ]
-            []
-            :: arcs
+        List.map f <|
+            mapToStroke circData model
 
 
-pie : List SimpleAccount -> Svg Msg
+pie : Model -> Svg Msg
 pie =
     genericPie unitCirc
+
+
+update : Msg -> Model -> Model
+update msg model =
+    let
+        toggle : Maybe Section -> Maybe Section
+        toggle section =
+            Maybe.map (\s -> { s | hovered = not s.hovered }) section
+    in
+    case msg of
+        OnMouseOver accountName ->
+            Model <| Dict.update accountName toggle model.accounts
+
+        OnMouseOut accountName ->
+            Model <| Dict.update accountName toggle model.accounts

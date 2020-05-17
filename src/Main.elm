@@ -13,8 +13,8 @@ import Browser.Navigation as Nav
 import Bulma.Classes as Bulma
 import Bulma.Helpers as BulmaHelpers
 import Dict exposing (Dict)
-import Html exposing (Html, a, div, h1, h3, hr, i, li, nav, section, span, text, ul)
-import Html.Attributes exposing (class, classList, height, href, style, width)
+import Html exposing (Html, a, div, figure, h1, hr, i, li, nav, section, span, text, ul)
+import Html.Attributes exposing (class, classList, height, href, width)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode
@@ -67,6 +67,7 @@ type alias Model =
     , isMenuActive : Bool
     , cashflow : List SimpleAccount
     , summary : List SimpleAccount
+    , pieChart : PieChart.Model
     }
 
 
@@ -85,7 +86,7 @@ init _ url key =
                 Nothing ->
                     Route.Home
     in
-    ( Model initPage key Dict.empty [] Nothing False [] []
+    ( Model initPage key Dict.empty [] Nothing False [] [] (PieChart.getModel [])
     , Cmd.batch
         [ getAccounts
         , getTransactions
@@ -193,7 +194,7 @@ update msg model =
         ExpenseSummaryReceived result ->
             case result of
                 Ok summary ->
-                    ( { model | summary = summary }, Cmd.none )
+                    ( { model | summary = summary, pieChart = PieChart.getModel summary }, Cmd.none )
 
                 Err _ ->
                     ( model, Cmd.none )
@@ -216,8 +217,8 @@ update msg model =
             , Cmd.none
             )
 
-        PieChartMsg _ ->
-            ( model, Cmd.none )
+        PieChartMsg message ->
+            ( { model | pieChart = PieChart.update message model.pieChart }, Cmd.none )
 
 
 
@@ -389,7 +390,7 @@ viewExpenseSummary model =
                 , ul [] <| List.map f <| List.sortBy (.balance >> (*) -1) rest
                 , hr [] []
                 , div [] [ h1 [ BulmaHelpers.classList [ Bulma.isSize1, Bulma.isPulledRight ] ] [ text <| formatBalance total.balance ] ]
-                , div [] [ PieChart.pie rest ] |> Html.map toMsg
+                , figure [] [ PieChart.pie model.pieChart ] |> Html.map toMsg
                 ]
 
         [] ->
