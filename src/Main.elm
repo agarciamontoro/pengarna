@@ -14,10 +14,11 @@ import Bulma.Classes as Bulma
 import Bulma.Helpers as BulmaHelpers
 import Dict exposing (Dict)
 import Html exposing (Html, a, div, h1, h3, hr, i, li, nav, section, span, text, ul)
-import Html.Attributes exposing (class, classList, height, href, width)
+import Html.Attributes exposing (class, classList, height, href, style, width)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode
+import PieChart
 import Route exposing (Page)
 import Svg exposing (circle, svg)
 import Svg.Attributes as SvgAttrs
@@ -54,6 +55,7 @@ type Msg
     | ExpenseSummaryReceived (Result Http.Error (List SimpleAccount))
     | NewTime Time.Posix
     | ToggleMenu
+    | PieChartMsg PieChart.Msg
 
 
 type alias Model =
@@ -213,6 +215,9 @@ update msg model =
             ( { model | isMenuActive = not model.isMenuActive }
             , Cmd.none
             )
+
+        PieChartMsg _ ->
+            ( model, Cmd.none )
 
 
 
@@ -384,10 +389,16 @@ viewExpenseSummary model =
                 , ul [] <| List.map f <| List.sortBy (.balance >> (*) -1) rest
                 , hr [] []
                 , div [] [ h1 [ BulmaHelpers.classList [ Bulma.isSize1, Bulma.isPulledRight ] ] [ text <| formatBalance total.balance ] ]
+                , div [] [ PieChart.pie rest ] |> Html.map toMsg
                 ]
 
         [] ->
             div [] []
+
+
+toMsg : PieChart.Msg -> Msg
+toMsg msg =
+    PieChartMsg msg
 
 
 viewTransactions : Model -> Html Msg
