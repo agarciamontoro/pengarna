@@ -1,11 +1,123 @@
 module PieChart exposing (Model, Msg, getModel, pie, update)
 
 import Account exposing (SimpleAccount)
-import Array exposing (Array)
 import Dict exposing (Dict)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Svg.Events exposing (onMouseOut, onMouseOver)
+
+
+type alias CartesianPoint =
+    { x : Float
+    , y : Float
+    }
+
+
+buildPoint : ( Float, Float ) -> CartesianPoint
+buildPoint ( x, y ) =
+    CartesianPoint x y
+
+
+pointStr : CartesianPoint -> List String
+pointStr point =
+    [ String.fromFloat point.x
+    , String.fromFloat point.y
+    ]
+
+
+type Orientation
+    = CW
+    | CCW
+
+
+type alias ArcCirc =
+    { end : CartesianPoint
+    , radius : Float
+    , orientation : Orientation
+    , largerThanPi : Bool
+    }
+
+
+type Path
+    = Move CartesianPoint
+    | Line CartesianPoint
+    | Arc ArcCirc
+    | ClosePath
+
+
+pathStr : Path -> String
+pathStr path =
+    case path of
+        Move point ->
+            String.join " " <| "M" :: pointStr point
+
+        Line point ->
+            String.join " " <| "L" :: pointStr point
+
+        Arc { end, radius, orientation, largerThanPi } ->
+            let
+                largeArcFlag =
+                    if largerThanPi then
+                        1
+
+                    else
+                        0
+
+                sweepFlag =
+                    case orientation of
+                        CW ->
+                            1
+
+                        CCW ->
+                            0
+            in
+            String.join " " <| "A" :: ([ radius, radius, 0, largeArcFlag, sweepFlag, end.x, end.y ] |> List.map String.fromFloat)
+
+        ClosePath ->
+            "Z"
+
+
+
+-- In Polar coordinates
+
+
+type alias CircSection =
+    { start : Float
+    , angleLength : Float
+    , outerRadius : Float
+    , innerRadius : Float
+    }
+
+
+circSectionPath : CircSection -> String
+circSectionPath { start, angleLength, outerRadius, innerRadius } =
+    let
+        end =
+            start + angleLength
+
+        firstPoint =
+            fromPolar ( innerRadius, start ) |> buildPoint
+
+        secondPoint =
+            fromPolar ( outerRadius, start ) |> buildPoint
+
+        thirdPoint =
+            fromPolar ( outerRadius, end ) |> buildPoint
+
+        fourthPoint =
+            fromPolar ( innerRadius, end ) |> buildPoint
+
+        largerThanPi =
+            end - start > pi
+    in
+    [ Move firstPoint
+    , Line secondPoint
+    , Arc <| ArcCirc thirdPoint outerRadius CW largerThanPi
+    , Line fourthPoint
+    , Arc <| ArcCirc firstPoint innerRadius CCW largerThanPi
+    ]
+        |> List.map pathStr
+        |> String.join " "
 
 
 type alias Model =
@@ -129,19 +241,6 @@ type alias Stroke =
     }
 
 
-dashArray : Circle -> Stroke -> String
-dashArray circle stroke =
-    String.join " "
-        [ String.fromFloat stroke.length
-        , String.fromFloat <| tau * circle.r - stroke.length
-        ]
-
-
-dashOffset : Circle -> Stroke -> String
-dashOffset _ stroke =
-    String.fromFloat (tau - stroke.offset)
-
-
 mapToStroke : Circle -> Model -> List ( Section, Stroke )
 mapToStroke circle model =
     let
@@ -149,34 +248,37 @@ mapToStroke circle model =
             Dict.values model.accounts |> List.sortBy (.account >> .balance)
 
         totalAmount =
-            sum sectionList
+            toFloat <| sum sectionList
 
         f section ( list, offset ) =
             let
                 currLength =
-                    length circle (toFloat totalAmount) (toFloat section.account.balance)
+                    length circle totalAmount (toFloat section.account.balance)
             in
             ( ( section, Stroke currLength offset ) :: list, offset + currLength )
     in
-    List.foldr f ( [], tau - tau / 4 ) sectionList
+    List.foldr f ( [], -pi / 2 ) sectionList
         |> Tuple.first
 
 
 genericPie : Circle -> Model -> Svg Msg
 genericPie circData model =
     let
+        strokeColor section =
+            if section.hovered then
+                "gold"
+
+            else
+                section.color
+
         f : ( Section, Stroke ) -> Svg Msg
         f ( section, sectionStroke ) =
-            circle
-                [ cx <| String.fromFloat circData.x
-                , cy <| String.fromFloat circData.y
-                , r <| String.fromFloat circData.r
-                , fill "none"
-                , stroke <| section.color
-                , strokeWidth <| String.fromFloat circData.width
-                , strokeDasharray <| dashArray circData sectionStroke
-                , strokeDashoffset <| dashOffset circData sectionStroke
-                , pointerEvents "visibleStroke"
+            Svg.path
+                [ d <| circSectionPath <| CircSection sectionStroke.offset sectionStroke.length 1 0.8
+                , fill <| strokeColor section -- "none"
+                , stroke "red"
+                , strokeWidth "0.005"
+                , strokeLinecap "square"
                 , onMouseOver <| OnMouseOver section.account.name
                 , onMouseOut <| OnMouseOut section.account.name
                 ]
