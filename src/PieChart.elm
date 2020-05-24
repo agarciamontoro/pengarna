@@ -21,6 +21,7 @@ import SvgUtils
 type alias Model =
     { total : Int
     , circWidth : Float
+    , hoveredAccount : Maybe AccountSection
     , accounts : Dict String AccountSection
     }
 
@@ -40,7 +41,6 @@ mapToStroke total accounts =
                     AccountSection
                         section
                         (colorFromName section.name)
-                        False
                         False
                         (Stroke currLength offset)
             in
@@ -70,7 +70,7 @@ getModel circWidth accounts =
                 )
                 accounts
     in
-    mapToStroke total cleanList |> Dict.fromList |> Model total circWidth
+    mapToStroke total cleanList |> Dict.fromList |> Model total circWidth Nothing
 
 
 {-| Data needed to render a circle section
@@ -78,7 +78,6 @@ getModel circWidth accounts =
 type alias AccountSection =
     { account : SimpleAccount
     , color : String
-    , hovered : Bool
     , selected : Bool
     , stroke : Stroke
     }
@@ -89,7 +88,8 @@ type alias AccountSection =
 nameToColor : Dict String String
 nameToColor =
     Dict.fromList
-        [ ( "casa", "crimson" )
+        [ ( "impuestos", "darkslategrey" )
+        , ( "casa", "crimson" )
         , ( "comida", "green" )
         , ( "autónomos", "brown" )
         , ( "ropa", "orange" )
@@ -165,52 +165,86 @@ type alias Stroke =
 view : Model -> Svg Msg
 view model =
     let
-        strokeColor section =
-            if section.hovered then
-                "gold"
-
-            else
-                section.color
-
         f : String -> AccountSection -> Svg Msg
         f name account =
             Svg.path
                 [ SvgUtils.circSectionPath <| SvgUtils.CircSection account.stroke.offset account.stroke.length 1 (1 - model.circWidth)
-                , fill <| strokeColor account
+                , fill account.color
                 , onMouseOver <| OnMouseOver account.account.name
                 , onMouseOut <| OnMouseOut name
                 ]
                 []
 
+        allPaths =
+            case model.hoveredAccount of
+                Nothing ->
+                    Dict.toList <| Dict.map f model.accounts
+
+                Just acc ->
+                    ( acc.account.name
+                    , Svg.path
+                        [ SvgUtils.circSectionPath <| SvgUtils.CircSection acc.stroke.offset acc.stroke.length 1.01 (0.99 - model.circWidth)
+                        , fill "gold"
+                        , onMouseOver <| OnMouseOver acc.account.name
+                        , onMouseOut <| OnMouseOut acc.account.name
+                        ]
+                        []
+                    )
+                        :: (Dict.toList <| Dict.map f model.accounts)
+
+        formatInnerText accountName amount =
+            Svg.g [ textAnchor "middle" ]
+                [ Svg.text_
+                    [ dy "-0.07"
+                    , opacity "0.5"
+                    , fontSize "0.08"
+                    , fontWeight "350"
+                    ]
+                    [ Svg.text <| String.toUpper accountName
+                    ]
+                , Svg.text_
+                    [ x "0"
+                    , y "0"
+                    , fontSize "0.17"
+                    , fontWeight "200"
+                    , dominantBaseline "middle"
+                    ]
+                    [ Svg.text <| Balance.format amount
+                    ]
+                ]
+
         text =
-            Svg.text_
-                [ x "0"
-                , y "0"
-                , fontSize "0.1"
-                , dominantBaseline "middle"
-                , textAnchor "middle"
-                ]
-                [ Svg.text <| Balance.format model.total
-                ]
+            case model.hoveredAccount of
+                Nothing ->
+                    formatInnerText "Total" model.total
+
+                Just { account } ->
+                    formatInnerText account.name account.balance
     in
     Svg.Keyed.node "svg"
         [ width "100%"
         , height "100%"
         , viewBox viewBoxStr
         ]
-        (( "innerTitle", text ) :: (Dict.toList <| Dict.map f model.accounts))
+        (( "innerTitle", text ) :: allPaths)
 
 
 update : Msg -> Model -> Model
 update msg model =
-    let
-        toggle : Maybe AccountSection -> Maybe AccountSection
-        toggle section =
-            Maybe.map (\s -> { s | hovered = not s.hovered }) section
-    in
     case msg of
         OnMouseOver accountName ->
-            { model | accounts = Dict.update accountName toggle model.accounts }
+            case model.hoveredAccount of
+                Nothing ->
+                    { model
+                        | accounts = Dict.remove accountName model.accounts
+                        , hoveredAccount = Dict.get accountName model.accounts
+                    }
+
+                Just _ ->
+                    model
 
         OnMouseOut accountName ->
-            { model | accounts = Dict.update accountName toggle model.accounts }
+            { model
+                | accounts = Dict.update accountName (\_ -> model.hoveredAccount) model.accounts
+                , hoveredAccount = Nothing
+            }
