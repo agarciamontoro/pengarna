@@ -6,20 +6,81 @@ import Dict exposing (Dict)
 import Svg exposing (Svg)
 import Svg.Attributes exposing (..)
 import Svg.Events exposing (onMouseOut, onMouseOver)
+import Svg.Keyed
 import SvgUtils
 
 
+{-| PieChart model
+
+  - total is the sum of the balances in all the accounts.
+  - circWidth is the width of the circle, as a percentage (over 1) of the circle radius.
+  - accounts is a dictionary mapping every account name to its AccountSection, the type
+    containing all data to render a circle section.
+
+-}
 type alias Model =
     { total : Int
-    , accounts : Dict String Section
+    , circWidth : Float
+    , accounts : Dict String AccountSection
     }
 
 
-type alias Section =
+mapToStroke : Int -> List SimpleAccount -> List ( String, AccountSection )
+mapToStroke total accounts =
+    let
+        sectionList =
+            List.sortBy .balance accounts
+
+        f section ( list, offset ) =
+            let
+                currLength =
+                    length (toFloat total) (toFloat section.balance)
+
+                account =
+                    AccountSection
+                        section
+                        (colorFromName section.name)
+                        False
+                        False
+                        (Stroke currLength offset)
+            in
+            ( ( section.name, account ) :: list, offset + currLength )
+    in
+    List.foldr f ( [], -pi / 2 ) sectionList |> Tuple.first
+
+
+getModel : Float -> List SimpleAccount -> Model
+getModel circWidth accounts =
+    let
+        total =
+            List.sum <| List.map .balance cleanList
+
+        prefixLength =
+            String.length "expenses:"
+
+        cleanList =
+            List.filterMap
+                (\acc ->
+                    case acc.name of
+                        "expenses" ->
+                            Nothing
+
+                        name ->
+                            Just { acc | name = String.dropLeft prefixLength name }
+                )
+                accounts
+    in
+    mapToStroke total cleanList |> Dict.fromList |> Model total circWidth
+
+
+{-| Data needed to render a circle section
+-}
+type alias AccountSection =
     { account : SimpleAccount
     , color : String
     , hovered : Bool
     , selected : Bool
+    , stroke : Stroke
     }
 
 
@@ -50,41 +111,9 @@ colorFromName account =
         |> Maybe.withDefault "black"
 
 
-getModel : List SimpleAccount -> Model
-getModel accounts =
-    let
-        total =
-            List.map .balance accounts |> List.sum
-
-        toDict : SimpleAccount -> Maybe ( String, Section )
-        toDict account =
-            case account.name of
-                "expenses" ->
-                    Nothing
-
-                _ ->
-                    let
-                        cleanName =
-                            String.dropLeft (String.length "expenses:") account.name
-                    in
-                    Just ( account.name, Section account (colorFromName cleanName) False False )
-    in
-    List.filterMap toDict accounts |> Dict.fromList |> Model total
-
-
 type Msg
     = OnMouseOver String
     | OnMouseOut String
-
-
-sum : List Section -> Int
-sum sections =
-    List.map (.account >> .balance) sections |> List.sum
-
-
-tau : Float
-tau =
-    2 * pi
 
 
 type alias Circle =
@@ -124,33 +153,13 @@ viewBoxStr =
 
 length : Float -> Float -> Float
 length total amount =
-    amount * tau * unitCirc.r / total
+    amount * 2 * pi * unitCirc.r / total
 
 
 type alias Stroke =
     { length : Float
     , offset : Float
     }
-
-
-mapToStroke : Model -> List ( Section, Stroke )
-mapToStroke model =
-    let
-        sectionList =
-            Dict.values model.accounts |> List.sortBy (.account >> .balance)
-
-        totalAmount =
-            toFloat <| sum sectionList
-
-        f section ( list, offset ) =
-            let
-                currLength =
-                    length totalAmount (toFloat section.account.balance)
-            in
-            ( ( section, Stroke currLength offset ) :: list, offset + currLength )
-    in
-    List.foldr f ( [], -pi / 2 ) sectionList
-        |> Tuple.first
 
 
 view : Model -> Svg Msg
@@ -163,13 +172,13 @@ view model =
             else
                 section.color
 
-        f : ( Section, Stroke ) -> Svg Msg
-        f ( section, sectionStroke ) =
+        f : String -> AccountSection -> Svg Msg
+        f name account =
             Svg.path
-                [ SvgUtils.circSectionPath <| SvgUtils.CircSection sectionStroke.offset sectionStroke.length 1 0.8
-                , fill <| strokeColor section
-                , onMouseOver <| OnMouseOver section.account.name
-                , onMouseOut <| OnMouseOut section.account.name
+                [ SvgUtils.circSectionPath <| SvgUtils.CircSection account.stroke.offset account.stroke.length 1 (1 - model.circWidth)
+                , fill <| strokeColor account
+                , onMouseOver <| OnMouseOver account.account.name
+                , onMouseOut <| OnMouseOut name
                 ]
                 []
 
@@ -184,18 +193,18 @@ view model =
                 [ Svg.text <| Balance.format model.total
                 ]
     in
-    Svg.svg
+    Svg.Keyed.node "svg"
         [ width "100%"
         , height "100%"
         , viewBox viewBoxStr
         ]
-        (text :: List.map f (mapToStroke model))
+        (( "innerTitle", text ) :: (Dict.toList <| Dict.map f model.accounts))
 
 
 update : Msg -> Model -> Model
 update msg model =
     let
-        toggle : Maybe Section -> Maybe Section
+        toggle : Maybe AccountSection -> Maybe AccountSection
         toggle section =
             Maybe.map (\s -> { s | hovered = not s.hovered }) section
     in

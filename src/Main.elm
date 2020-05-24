@@ -86,7 +86,7 @@ init _ url key =
                 Nothing ->
                     Route.Home
     in
-    ( Model initPage key Dict.empty [] Nothing False [] [] (PieChart.getModel [])
+    ( Model initPage key Dict.empty [] Nothing False [] [] (PieChart.getModel 0.3 [])
     , Cmd.batch
         [ getAccounts
         , getTransactions
@@ -194,7 +194,7 @@ update msg model =
         ExpenseSummaryReceived result ->
             case result of
                 Ok summary ->
-                    ( { model | summary = summary, pieChart = PieChart.getModel summary }, Cmd.none )
+                    ( { model | summary = summary, pieChart = PieChart.getModel 0.3 summary }, Cmd.none )
 
                 Err _ ->
                     ( model, Cmd.none )

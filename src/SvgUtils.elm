@@ -113,3 +113,20 @@ circSectionPath { start, angleLength, outerRadius, innerRadius } =
         |> List.map pathStr
         |> String.join " "
         |> d
+
+
+tau : Float
+tau =
+    2 * pi
+
+
+type alias Circle =
+    { x : Float
+    , y : Float
+    , r : Float
+    }
+
+
+unitCirc : Circle
+unitCirc =
+    Circle 0 0 1
