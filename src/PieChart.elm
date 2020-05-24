@@ -26,27 +26,49 @@ type alias Model =
     }
 
 
-mapToStroke : Int -> List SimpleAccount -> List ( String, AccountSection )
-mapToStroke total accounts =
+{-| Data needed to render a circle section
+-}
+type alias AccountSection =
+    { account : SimpleAccount
+    , color : String
+    , selected : Bool
+    , stroke : Stroke
+    }
+
+
+computeSections : Int -> List SimpleAccount -> List ( String, AccountSection )
+computeSections total accounts =
     let
-        sectionList =
-            List.sortBy .balance accounts
+        rec { list, offset, accAmount } sectionList =
+            case sectionList of
+                section :: rest ->
+                    let
+                        currLength =
+                            length (toFloat total) (toFloat section.balance)
+                    in
+                    if currLength < pi / 35 then
+                        ( "otros", AccountSection (SimpleAccount "otros" (total - accAmount)) "grey" False (Stroke (3 * pi / 2 - offset) offset) ) :: list
 
-        f section ( list, offset ) =
-            let
-                currLength =
-                    length (toFloat total) (toFloat section.balance)
+                    else
+                        let
+                            account =
+                                AccountSection
+                                    section
+                                    (colorFromName section.name)
+                                    False
+                                    (Stroke currLength offset)
+                        in
+                        rec
+                            { list = ( section.name, account ) :: list
+                            , offset = offset + currLength
+                            , accAmount = accAmount + account.account.balance
+                            }
+                            rest
 
-                account =
-                    AccountSection
-                        section
-                        (colorFromName section.name)
-                        False
-                        (Stroke currLength offset)
-            in
-            ( ( section.name, account ) :: list, offset + currLength )
+                [] ->
+                    list
     in
-    List.foldr f ( [], -pi / 2 ) sectionList |> Tuple.first
+    rec { list = [], offset = -pi / 2, accAmount = 0 } <| List.sortBy (.balance >> (*) -1) accounts
 
 
 getModel : Float -> List SimpleAccount -> Model
@@ -70,17 +92,7 @@ getModel circWidth accounts =
                 )
                 accounts
     in
-    mapToStroke total cleanList |> Dict.fromList |> Model total circWidth Nothing
-
-
-{-| Data needed to render a circle section
--}
-type alias AccountSection =
-    { account : SimpleAccount
-    , color : String
-    , selected : Bool
-    , stroke : Stroke
-    }
+    computeSections total cleanList |> Dict.fromList |> Model total circWidth Nothing
 
 
 {-| Maps every top level account under expenses: to a color
@@ -98,7 +110,7 @@ nameToColor =
         , ( "cocina", "coral" )
         , ( "regalos", "yellow" )
         , ( "detergente", "purple" )
-        , ( "suscripciones", "grey" )
+        , ( "suscripciones", "lightgreen" )
         , ( "velas", "beige" )
         , ( "donaciones", "azure" )
         , ( "bolsas", "aquamarine" )
