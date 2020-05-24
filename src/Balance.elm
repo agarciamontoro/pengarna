@@ -2,6 +2,7 @@ module Balance exposing
     ( Balance
     , balanceDecoder
     , getFirstEuroBalance
+    , format
     )
 
 {-|
@@ -85,3 +86,27 @@ the Float returned equals 0.
 getFirstEuroBalance : List Balance -> Float
 getFirstEuroBalance =
     getFirstCommodityBalance Commodity.Euro
+
+
+format : Int -> String
+format balance =
+    let
+        str =
+            String.fromInt balance
+
+        maybeWholePart =
+            String.slice 0 -2 str
+
+        wholePart =
+            if String.isEmpty maybeWholePart then
+                "0"
+
+            else
+                maybeWholePart
+    in
+    String.concat
+        [ wholePart
+        , ","
+        , String.right 2 str
+        , "€"
+        ]

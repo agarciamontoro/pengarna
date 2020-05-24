@@ -8,6 +8,7 @@ module Main exposing (main)
 
 import Account exposing (Account, SimpleAccount)
 import Api
+import Balance
 import Browser
 import Browser.Navigation as Nav
 import Bulma.Classes as Bulma
@@ -328,39 +329,15 @@ viewCashflow accounts =
                         (\elem ->
                             li [ class Bulma.isClearfix ]
                                 [ div [ class Bulma.isPulledLeft ] [ Account.formatAccountName <| String.replace "assets:" "" elem.name ]
-                                , div [ class Bulma.isPulledRight ] [ text <| formatBalance elem.balance ]
+                                , div [ class Bulma.isPulledRight ] [ text <| Balance.format elem.balance ]
                                 ]
                         )
                         rest
-                , div [] [ h1 [ BulmaHelpers.classList [ Bulma.isSize1, Bulma.isPulledRight ] ] [ text <| formatBalance total.balance ] ]
+                , div [] [ h1 [ BulmaHelpers.classList [ Bulma.isSize1, Bulma.isPulledRight ] ] [ text <| Balance.format total.balance ] ]
                 ]
 
         [] ->
             div [] []
-
-
-formatBalance : Int -> String
-formatBalance balance =
-    let
-        str =
-            String.fromInt balance
-
-        maybeWholePart =
-            String.slice 0 -2 str
-
-        wholePart =
-            if String.isEmpty maybeWholePart then
-                "0"
-
-            else
-                maybeWholePart
-    in
-    String.concat
-        [ wholePart
-        , ","
-        , String.right 2 str
-        , "€"
-        ]
 
 
 icon : String -> Html Msg
@@ -380,7 +357,7 @@ viewExpenseSummary model =
                     [ span [ class Bulma.icon ] [ icon <| Account.iconFromName <| name elem ]
                     , Account.formatAccountName <| name elem
                     ]
-                , div [ BulmaHelpers.classList [ Bulma.isPulledRight, Bulma.isFamilyMonospace ] ] [ text <| formatBalance elem.balance ]
+                , div [ BulmaHelpers.classList [ Bulma.isPulledRight, Bulma.isFamilyMonospace ] ] [ text <| Balance.format elem.balance ]
                 ]
     in
     case model.summary of
@@ -389,8 +366,8 @@ viewExpenseSummary model =
                 [ div [] [ h1 [ class Bulma.isSize1 ] [ text <| "Gastos" ] ]
                 , ul [] <| List.map f <| List.sortBy (.balance >> (*) -1) rest
                 , hr [] []
-                , div [] [ h1 [ BulmaHelpers.classList [ Bulma.isSize1, Bulma.isPulledRight ] ] [ text <| formatBalance total.balance ] ]
-                , figure [] [ PieChart.pie model.pieChart ] |> Html.map toMsg
+                , div [] [ h1 [ BulmaHelpers.classList [ Bulma.isSize1, Bulma.isPulledRight ] ] [ text <| Balance.format total.balance ] ]
+                , figure [] [ PieChart.view model.pieChart ] |> Html.map toMsg
                 ]
 
         [] ->

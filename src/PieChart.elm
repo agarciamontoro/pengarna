@@ -1,10 +1,13 @@
-module PieChart exposing (Model, Msg, getModel, pie, update)
+module PieChart exposing (Model, Msg, getModel, update, view)
 
 import Account exposing (SimpleAccount)
+import Balance
+import Bulma.Classes as Bulma
 import Dict exposing (Dict)
-import Svg exposing (..)
+import Svg exposing (Svg)
 import Svg.Attributes exposing (..)
 import Svg.Events exposing (onMouseOut, onMouseOver)
+import Svg.Keyed as SvgKeyed
 
 
 type alias CartesianPoint =
@@ -89,7 +92,7 @@ type alias CircSection =
     }
 
 
-circSectionPath : CircSection -> String
+circSectionPath : CircSection -> Svg.Attribute msg
 circSectionPath { start, angleLength, outerRadius, innerRadius } =
     let
         end =
@@ -118,10 +121,12 @@ circSectionPath { start, angleLength, outerRadius, innerRadius } =
     ]
         |> List.map pathStr
         |> String.join " "
+        |> d
 
 
 type alias Model =
-    { accounts : Dict String Section
+    { total : Int
+    , accounts : Dict String Section
     }
 
 
@@ -163,6 +168,9 @@ colorFromName account =
 getModel : List SimpleAccount -> Model
 getModel accounts =
     let
+        total =
+            List.map .balance accounts |> List.sum
+
         toDict : SimpleAccount -> Maybe ( String, Section )
         toDict account =
             case account.name of
@@ -176,7 +184,7 @@ getModel accounts =
                     in
                     Just ( account.name, Section account (colorFromName cleanName) False False )
     in
-    List.filterMap toDict accounts |> Dict.fromList |> Model
+    List.filterMap toDict accounts |> Dict.fromList |> Model total
 
 
 type Msg
@@ -198,29 +206,28 @@ type alias Circle =
     { x : Float
     , y : Float
     , r : Float
-    , width : Float
     }
 
 
 unitCirc : Circle
 unitCirc =
-    Circle 0 0 1 0.5
+    Circle 0 0 1
 
 
-viewBoxStr : Circle -> String
-viewBoxStr circle =
+viewBoxStr : String
+viewBoxStr =
     let
         minX =
-            (circle.x - circle.r) - (circle.width / 2)
+            unitCirc.x - unitCirc.r
 
         minY =
-            (circle.y - circle.r) - (circle.width / 2)
+            unitCirc.y - unitCirc.r
 
         width =
-            (circle.r * 2) + circle.width
+            unitCirc.r * 2
 
         height =
-            (circle.r * 2) + circle.width
+            unitCirc.r * 2
     in
     String.join " "
         [ String.fromFloat minX
@@ -230,9 +237,9 @@ viewBoxStr circle =
         ]
 
 
-length : Circle -> Float -> Float -> Float
-length circle total amount =
-    amount * tau * circle.r / total
+length : Float -> Float -> Float
+length total amount =
+    amount * tau * unitCirc.r / total
 
 
 type alias Stroke =
@@ -241,8 +248,8 @@ type alias Stroke =
     }
 
 
-mapToStroke : Circle -> Model -> List ( Section, Stroke )
-mapToStroke circle model =
+mapToStroke : Model -> List ( Section, Stroke )
+mapToStroke model =
     let
         sectionList =
             Dict.values model.accounts |> List.sortBy (.account >> .balance)
@@ -253,7 +260,7 @@ mapToStroke circle model =
         f section ( list, offset ) =
             let
                 currLength =
-                    length circle totalAmount (toFloat section.account.balance)
+                    length totalAmount (toFloat section.account.balance)
             in
             ( ( section, Stroke currLength offset ) :: list, offset + currLength )
     in
@@ -261,8 +268,8 @@ mapToStroke circle model =
         |> Tuple.first
 
 
-genericPie : Circle -> Model -> Svg Msg
-genericPie circData model =
+view : Model -> Svg Msg
+view model =
     let
         strokeColor section =
             if section.hovered then
@@ -274,29 +281,30 @@ genericPie circData model =
         f : ( Section, Stroke ) -> Svg Msg
         f ( section, sectionStroke ) =
             Svg.path
-                [ d <| circSectionPath <| CircSection sectionStroke.offset sectionStroke.length 1 0.8
-                , fill <| strokeColor section -- "none"
-                , stroke "red"
-                , strokeWidth "0.005"
-                , strokeLinecap "square"
+                [ circSectionPath <| CircSection sectionStroke.offset sectionStroke.length 1 0.8
+                , fill <| strokeColor section
                 , onMouseOver <| OnMouseOver section.account.name
                 , onMouseOut <| OnMouseOut section.account.name
                 ]
                 []
+
+        text =
+            Svg.text_
+                [ x "0"
+                , y "0"
+                , fontSize "0.1"
+                , dominantBaseline "middle"
+                , textAnchor "middle"
+                ]
+                [ Svg.text <| Balance.format model.total
+                ]
     in
-    svg
+    Svg.svg
         [ width "100%"
         , height "100%"
-        , viewBox <| viewBoxStr circData
+        , viewBox viewBoxStr
         ]
-    <|
-        List.map f <|
-            mapToStroke circData model
-
-
-pie : Model -> Svg Msg
-pie =
-    genericPie unitCirc
+        (text :: List.map f (mapToStroke model))
 
 
 update : Msg -> Model -> Model
@@ -308,7 +316,7 @@ update msg model =
     in
     case msg of
         OnMouseOver accountName ->
-            Model <| Dict.update accountName toggle model.accounts
+            { model | accounts = Dict.update accountName toggle model.accounts }
 
         OnMouseOut accountName ->
-            Model <| Dict.update accountName toggle model.accounts
+            { model | accounts = Dict.update accountName toggle model.accounts }
